@@ -1,0 +1,15 @@
+node_modules/
+data/gtfs/*
+!data/gtfs/.gitkeep
+*.db
+*.db.tmp
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.env.*
+dist/
+*.log
+.claude/settings.local.json
+.DS_Store
+Thumbs.db

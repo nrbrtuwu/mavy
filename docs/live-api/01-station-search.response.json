@@ -1,0 +1,30 @@
+{
+  "_note": "GET https://mavplusz.hu//otp2-backend/otp/routers/default/geocode/stations?q=Keleti&limit=10&lang=en  (captured 2026-11-12 ~08:00 Budapest, trimmed to 4 of 12 features)",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "score": 2420000, "internationalPriced": 2, "modes": ["RAIL"], "code": "005510017", "countryIsoCode": "HU", "name": "Budapest-Keleti", "domesticPriced": 2, "type": "Stop" },
+      "geometry": { "type": "Point", "coordinates": [19.084167, 47.500278] },
+      "id": "1:005510017_0"
+    },
+    {
+      "type": "Feature",
+      "properties": { "score": 454395, "internationalPriced": 2, "modes": ["TRAM", "TROLLEYBUS", "BUS"], "code": "005510017", "countryIsoCode": "HU", "name": "Budapest, Keleti pályaudvar M", "domesticPriced": 2, "type": "Stop" },
+      "geometry": { "type": "Point", "coordinates": [19.084167, 47.500278] },
+      "id": "1:005510017_0"
+    },
+    {
+      "type": "Feature",
+      "properties": { "score": 34980, "internationalPriced": 0, "modes": ["COACH"], "code": "hkir_213566_1", "countryIsoCode": "HU", "name": "Hernádkak, Keleti Csúcsvízmű", "domesticPriced": 0, "type": "Stop" },
+      "geometry": { "type": "Point", "coordinates": [20.938989, 48.10001] },
+      "id": "hkir:hkir_213566_1"
+    },
+    {
+      "type": "Feature",
+      "properties": { "score": 16440, "internationalPriced": 0, "modes": ["TROLLEYBUS"], "code": "F01131", "countryIsoCode": "HU", "name": "Budapest, Keleti pályaudvar M (Garay utca)", "domesticPriced": 0, "type": "Stop" },
+      "geometry": { "type": "Point", "coordinates": [19.082036, 47.501824] },
+      "id": "BKK:F01131"
+    }
+  ]
+}

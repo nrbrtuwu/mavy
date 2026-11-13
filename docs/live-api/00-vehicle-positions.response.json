@@ -1,0 +1,97 @@
+{
+  "_note": "POST https://mavplusz.hu//otp2-backend/otp/routers/default/index/graphql, query vehiclePositions (fired on page load; captured 2026-11-12 ~08:00 Budapest; trimmed to 2 vehicles). Times are seconds after service-day start, delays in seconds.",
+  "data": {
+    "vehiclePositions": [
+      {
+        "vehicleId": "1:918061825710",
+        "isEstimated": false,
+        "lat": 47.4859009,
+        "lon": 19.26194,
+        "heading": 270.0,
+        "vehicleModel": "",
+        "label": "",
+        "licensePlate": null,
+        "uicCode": "918061825710",
+        "lastUpdated": 1794469208,
+        "speed": 10.0,
+        "stopRelationship": {
+          "status": "IN_TRANSIT_TO",
+          "stop": { "gtfsId": "1:005510017_6", "name": "Budapest-Keleti" },
+          "arrivalTime": 32460,
+          "departureTime": 32460
+        },
+        "trip": {
+          "id": "VHJpcDoxOjM1MDUxMjAx",
+          "gtfsId": "1:35051201",
+          "routeShortName": "<span class=\"MNR2007\">&#474;</span>",
+          "tripHeadsign": "Budapest-Keleti",
+          "tripShortName": "519 TOKAJ InterCity",
+          "serviceDate": "2026-11-12",
+          "route": {
+            "agency": { "name": "MÁV Személyszállítási Zrt." },
+            "mode": "RAIL",
+            "shortName": "<span class=\"MNR2007\">&#474;</span>",
+            "longName": "IC TOKAJ",
+            "textColor": "274F96",
+            "color": "FEFEFE"
+          },
+          "pattern": { "id": "UGF0dGVybjoxOkUzNTA1MTIwMTo6MDQ" }
+        },
+        "nextStop": { "arrivalDelay": 840, "stop": { "name": "Budapest-Keleti" } },
+        "prevOrCurrentStop": {
+          "scheduledArrival": 28440,
+          "realtimeArrival": 29160,
+          "arrivalDelay": 720,
+          "scheduledDeparture": 28500,
+          "realtimeDeparture": 29220,
+          "departureDelay": 720
+        }
+      },
+      {
+        "vehicleId": "1:505580054508",
+        "isEstimated": false,
+        "lat": 47.6476593,
+        "lon": 19.4928303,
+        "heading": 113.0,
+        "vehicleModel": "Dunakeszi Járműjavító-FECSKE VEZÉRLŐ",
+        "label": "",
+        "licensePlate": null,
+        "uicCode": "505580054508",
+        "lastUpdated": 1794469132,
+        "speed": 0.0,
+        "stopRelationship": {
+          "status": "STOPPED_AT",
+          "stop": { "gtfsId": "1:005511163_2", "name": "Aszód" },
+          "arrivalTime": 31020,
+          "departureTime": 31020
+        },
+        "trip": {
+          "id": "VHJpcDoxOjM1Mzg1Mjk0",
+          "gtfsId": "1:35385294",
+          "routeShortName": "<span class=\"MNR2007\">&#508;</span>",
+          "tripHeadsign": "Vác",
+          "tripShortName": "33422 passenger train",
+          "serviceDate": "2026-11-12",
+          "route": {
+            "agency": { "name": "MÁV Személyszállítási Zrt." },
+            "mode": "RAIL",
+            "shortName": "<span class=\"MNR2007\">&#508;</span>",
+            "longName": "S77",
+            "textColor": "00A0E3",
+            "color": "FFFFFF"
+          },
+          "pattern": { "id": "UGF0dGVybjoxOlYyOTY1XzEwNjo6MDQ" }
+        },
+        "nextStop": { "arrivalDelay": 360, "stop": { "name": "Iklad-Domony" } },
+        "prevOrCurrentStop": {
+          "scheduledArrival": 30660,
+          "realtimeArrival": 31020,
+          "arrivalDelay": 360,
+          "scheduledDeparture": 30660,
+          "realtimeDeparture": 31020,
+          "departureDelay": 360
+        }
+      }
+    ]
+  }
+}

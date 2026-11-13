@@ -1,0 +1,6 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station,platform_code
+BPK,Budapest-Keleti,47.5003,19.0837,1,,
+BPK_1,Budapest-Keleti,47.5003,19.0837,0,BPK,1
+SZOL,Szolnok,47.1714,20.1866,0,,
+DEB,Debrecen,47.5193,21.6293,0,,
+GYOR,"Győr",47.6806,17.6352,0,,
