@@ -1,11 +1,10 @@
 import { useCallback } from "react"
 import { cn } from "cn"
 
-import { ListSkeleton, PageHeader } from "@/components/layout"
+import { Screen, ScreenSection, ScreenSkeleton } from "@/components/layout"
 import { DelayReason, DelayText, LiveStatus } from "@/components/train-bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
@@ -27,23 +26,24 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
       </Alert>
     )
   }
-  if (!t) return <ListSkeleton rows={8} />
+  if (!t) return <ScreenSkeleton rows={8} />
 
   const showLive = t.live.state !== "none"
   return (
-    <>
-      <PageHeader
-        title={t.headsign ? `→ ${t.headsign}` : (t.label ?? "Vonat")}
-        description={
-          <span className="flex flex-wrap items-center gap-2">
-            {t.label && <Badge variant="outline">{t.label}</Badge>}
-            <span>{serviceDateLabel(t.serviceDate)}</span>
-          </span>
-        }
-      />
-      <TrainState trip={t} />
-      <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
-      <Card className="py-0">
+    <Screen
+      title={t.headsign ? `→ ${t.headsign}` : (t.label ?? "Vonat")}
+      description={
+        <span className="flex flex-wrap items-center gap-2">
+          {t.label && <Badge variant="outline">{t.label}</Badge>}
+          <span>{serviceDateLabel(t.serviceDate)}</span>
+        </span>
+      }
+    >
+      <ScreenSection>
+        <TrainState trip={t} />
+        <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+      </ScreenSection>
+      <div className="border-t">
         <Table>
           <TableHeader>
             <TableRow>
@@ -69,8 +69,8 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
             ))}
           </TableBody>
         </Table>
-      </Card>
-    </>
+      </div>
+    </Screen>
   )
 }
 
@@ -92,8 +92,8 @@ function TrainState({ trip }: { trip: Trip }) {
   }
   if (trip.delayMin === null) return null
   return (
-    <Card size="sm" className="px-4">
-      <p className="text-sm">
+    <Alert>
+      <AlertTitle>
         {trip.delayMin > 0 ? (
           <>
             Jelenleg <DelayText time={{ planned: "", expected: null, delayMin: trip.delayMin }} cancelled={false} /> késés
@@ -101,9 +101,13 @@ function TrainState({ trip }: { trip: Trip }) {
         ) : (
           "Időben közlekedik."
         )}
-      </p>
-      <DelayReason reason={trip.reason} />
-    </Card>
+      </AlertTitle>
+      {trip.reason && (
+        <AlertDescription>
+          <DelayReason reason={trip.reason} />
+        </AlertDescription>
+      )}
+    </Alert>
   )
 }
 

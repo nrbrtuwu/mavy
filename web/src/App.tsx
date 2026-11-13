@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react"
 
-import { AppShell, PageHeader, type Section } from "@/components/layout"
+import { AppShell, Screen, type Section } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { href, parseHash, resolveStart, useHash } from "@/lib/router"
 import { useSettings } from "@/lib/settings"
@@ -52,7 +52,7 @@ export function App() {
       break
     default:
       screen = (
-        <PageHeader
+        <Screen
           title="Nincs ilyen oldal"
           actions={
             <Button asChild variant="outline">

@@ -20,7 +20,7 @@ import { MeshGradient } from "@paper-design/shaders-react"
 const PIXEL_BUDGET = 600_000 // per layer, ~ a 1000x600 canvas
 const MIN_PIXEL_RATIO = 1
 /** Black layer over the gradients: higher = darker background. */
-const DIM = { dark: 0.4, light: 0.12 }
+const DIM = { dark: 0.65, light: 0.25 }
 
 const PALETTES = {
   dark: {

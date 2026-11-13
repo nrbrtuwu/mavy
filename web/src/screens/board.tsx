@@ -2,11 +2,10 @@ import { useCallback } from "react"
 import { ChevronRight } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
-import { ListSkeleton, PageHeader } from "@/components/layout"
+import { Screen, ScreenList, ScreenSection, ScreenSkeleton } from "@/components/layout"
 import { DelayReason, DelayText, LiveStatus, TimeBlock } from "@/components/train-bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { platformText } from "@/lib/format"
@@ -28,29 +27,30 @@ export function BoardScreen({ stationId }: { stationId: string }) {
       </Alert>
     )
   }
-  if (!data) return <ListSkeleton />
+  if (!data) return <ScreenSkeleton />
 
   const showLive = data.live.state !== "none"
   return (
-    <>
-      <PageHeader
-        title={data.station.name}
-        description="Induló vonatok"
-        actions={<FavoriteButton favorite={{ type: "station", id: data.station.id, name: data.station.name }} />}
-      />
-      <LiveStatus live={data.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+    <Screen
+      title={data.station.name}
+      description="Induló vonatok"
+      actions={<FavoriteButton favorite={{ type: "station", id: data.station.id, name: data.station.name }} />}
+    >
+      <ScreenSection>
+        <LiveStatus live={data.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+      </ScreenSection>
       {data.departures.length === 0 ? (
-        <p className="text-sm text-muted-foreground">A következő 24 órában nem indul innen vonat.</p>
+        <ScreenSection>
+          <p className="text-sm text-muted-foreground">A következő 24 órában nem indul innen vonat.</p>
+        </ScreenSection>
       ) : (
-        <Card className="py-0">
-          <ul className="divide-y">
-            {data.departures.map((d) => (
-              <DepartureRow key={`${d.tripId}:${d.serviceDate}`} d={d} showLive={showLive} />
-            ))}
-          </ul>
-        </Card>
+        <ScreenList>
+          {data.departures.map((d) => (
+            <DepartureRow key={`${d.tripId}:${d.serviceDate}`} d={d} showLive={showLive} />
+          ))}
+        </ScreenList>
       )}
-    </>
+    </Screen>
   )
 }
 

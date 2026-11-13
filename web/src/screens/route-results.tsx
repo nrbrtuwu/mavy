@@ -2,12 +2,11 @@ import { useCallback } from "react"
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
-import { ListSkeleton, PageHeader } from "@/components/layout"
+import { Screen, ScreenList, ScreenSection, ScreenSkeleton } from "@/components/layout"
 import { DelayReason, DelayText, LiveStatus, TimeBlock } from "@/components/train-bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { durationText, platformText, timeParts } from "@/lib/format"
@@ -32,12 +31,11 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
       </Alert>
     )
   }
-  if (!data) return <ListSkeleton />
+  if (!data) return <ScreenSkeleton />
 
   const showLive = data.live.state !== "none"
   return (
-    <>
-      <PageHeader
+    <Screen
         title={`${data.from.name} → ${data.to.name}`}
         description={time ? `Indulás ${time} után` : "Következő közvetlen vonatok"}
         actions={
@@ -57,20 +55,22 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
             </Button>
           </>
         }
-      />
-      <LiveStatus live={data.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+    >
+      <ScreenSection>
+        <LiveStatus live={data.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+      </ScreenSection>
       {data.connections.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nincs közvetlen vonat a következő 24 órában.</p>
+        <ScreenSection>
+          <p className="text-sm text-muted-foreground">Nincs közvetlen vonat a következő 24 órában.</p>
+        </ScreenSection>
       ) : (
-        <Card className="py-0">
-          <ul className="divide-y">
-            {data.connections.map((c) => (
-              <ConnectionRow key={`${c.tripId}:${c.serviceDate}`} c={c} showLive={showLive} />
-            ))}
-          </ul>
-        </Card>
+        <ScreenList>
+          {data.connections.map((c) => (
+            <ConnectionRow key={`${c.tripId}:${c.serviceDate}`} c={c} showLive={showLive} />
+          ))}
+        </ScreenList>
       )}
-    </>
+    </Screen>
   )
 }
 

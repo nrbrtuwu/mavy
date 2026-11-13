@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from "react"
 import { ArrowUpDown, Search, X } from "lucide-react"
 
-import { PageHeader } from "@/components/layout"
+import { Screen, ScreenSection } from "@/components/layout"
 import { SearchInput, StationResults, useStationSearch } from "@/components/station-picker"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { href } from "@/lib/router"
 import type { Station } from "@/lib/types"
@@ -69,10 +68,8 @@ export function RouteFormScreen() {
   }
 
   return (
-    <>
-      <PageHeader title="Útvonal" description="Közvetlen vonatok két állomás között." />
-      <Card>
-        <CardContent>
+    <Screen title="Útvonal" description="Közvetlen vonatok két állomás között.">
+      <ScreenSection>
           <form onSubmit={submit} className="flex flex-col gap-4">
             <StationField id="from" label="Honnan" value={from} onChange={setFrom} />
             <Button
@@ -111,8 +108,7 @@ export function RouteFormScreen() {
               Keresés
             </Button>
           </form>
-        </CardContent>
-      </Card>
-    </>
+      </ScreenSection>
+    </Screen>
   )
 }
