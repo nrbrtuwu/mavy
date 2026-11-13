@@ -1,11 +1,11 @@
-import { useState } from "react"
+import { useKeptState } from "@/hooks/use-kept-state"
 
 import { Screen, ScreenSection } from "@/components/layout"
 import { SearchInput, StationResults, useStationSearch } from "@/components/station-picker"
 import { href } from "@/lib/router"
 
 export function StationSearchScreen() {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useKeptState("station-search:query", "")
   const { stations, error } = useStationSearch(query)
   return (
     <Screen title="Állomás keresése" description="Írd be az állomás nevét, ékezetek nélkül is megy.">

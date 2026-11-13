@@ -85,7 +85,7 @@ bun run icons         # regenerate the app icons
 
 PowerShell example: `$env:HOST = '192.168.0.10'; $env:PORT = '3001'; bun run start`
 
-In the app, the small "Beállítások" link at the bottom of every page opens the settings
+In the app, the "Beállítások" item (gear icon) in the navbar opens the settings
 (start page, animated background). Settings and favorites are stored on each device.
 
 ## Live delays

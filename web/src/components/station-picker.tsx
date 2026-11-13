@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input"
 import { api, errorMessage } from "@/lib/api"
 import type { Station, StationsResponse } from "@/lib/types"
 
+/** Search results kept in memory, so returning to a screen shows them at once. */
+const resultCache = new Map<string, Station[]>()
+
 /** Debounced station search. stations = null while the query is too short. */
 export function useStationSearch(query: string): { stations: Station[] | null; error: string | null } {
   const [result, setResult] = useState<{ q: string; stations: Station[] | null; error: string | null }>({
@@ -17,11 +20,13 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
   const q = query.trim()
 
   useEffect(() => {
-    if (q.length < 2) return
+    if (q.length < 2 || resultCache.has(q)) return
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       try {
         const data = await api<StationsResponse>(`/api/stations?q=${encodeURIComponent(q)}`, controller.signal)
+        if (resultCache.size > 100) resultCache.clear()
+        resultCache.set(q, data.stations)
         setResult({ q, stations: data.stations, error: null })
       } catch (err) {
         if (!controller.signal.aborted) setResult({ q, stations: null, error: errorMessage(err) })
@@ -33,7 +38,10 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
     }
   }, [q])
 
-  if (q.length < 2 || result.q !== q) return { stations: null, error: null }
+  if (q.length < 2) return { stations: null, error: null }
+  const cached = resultCache.get(q)
+  if (cached) return { stations: cached, error: null }
+  if (result.q !== q) return { stations: null, error: null }
   return { stations: result.stations, error: result.error }
 }
 

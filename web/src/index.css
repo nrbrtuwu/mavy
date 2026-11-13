@@ -128,3 +128,19 @@
     @apply font-sans;
     }
 }
+
+/*
+ * iOS 26 Safari draws normal page content under its floating bottom toolbar, but never
+ * position: fixed content (it paints a solid bar there instead). Tested on the owner's iPhone.
+ * So the page itself is taller than the screen and does not scroll; the animated background
+ * is ordinary content in it (stays put, reaches under the toolbar), and the app scrolls
+ * inside #app-scroll (see AppShell).
+ */
+html,
+body {
+  height: calc(100lvh + 250px);
+  overflow: hidden;
+}
+body {
+  position: relative;
+}

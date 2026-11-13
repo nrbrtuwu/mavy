@@ -18,7 +18,8 @@ export function App() {
   const route = resolveStart(parseHash(hash), startPage)
 
   useEffect(() => {
-    window.scrollTo(0, 0)
+    // Content scrolls inside the screen's box (see Screen), not the page.
+    document.querySelector("[data-screen-body]")?.scrollTo(0, 0)
   }, [hash])
 
   let section: Section = null
@@ -29,6 +30,7 @@ export function App() {
       screen = <FavoritesScreen />
       break
     case "settings":
+      section = "settings"
       screen = <SettingsScreen />
       break
     case "stations":

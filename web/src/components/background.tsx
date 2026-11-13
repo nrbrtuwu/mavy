@@ -13,6 +13,15 @@
 //   look the same when the browser scales them up).
 // - The library pauses each layer while the tab is hidden or the element is off screen.
 // - prefers-reduced-motion: a still frame (speed 0).
+//
+// Placement (iOS 26 Safari, tested on the owner's iPhone with test pages):
+// - position: fixed content is never drawn under Safari's floating bottom toolbar; Safari
+//   paints a solid bar there (coloured from a fixed bottom-edge element or the page).
+// - Normal page content that reaches below the screen IS drawn under the toolbar, also when
+//   the page cannot scroll.
+// So this is ordinary content (position: absolute, inset-0 of <body>), and <body> is taller
+// than the screen and does not scroll (index.css). It stays put and reaches under the toolbar.
+// The app scrolls in its own area (AppShell). No fixed elements at the bottom edge.
 
 import { useSyncExternalStore } from "react"
 import { MeshGradient } from "@paper-design/shaders-react"
@@ -22,14 +31,17 @@ const MIN_PIXEL_RATIO = 1
 /** Black layer over the gradients: higher = darker background. */
 const DIM = { dark: 0.65, light: 0.25 }
 
+/** Average grey of the dimmed animation: shown before WebGL starts or if it is unavailable. */
+const AVERAGE = { dark: "#212121", light: "#787878" }
+
 const PALETTES = {
   dark: {
-    background: "#000000",
+    background: AVERAGE.dark,
     base: ["#000000", "#7b7b7b", "#ffffff", "#1e1e1e", "#3c3c3c"],
     overlay: ["#000000", "#ffffff", "#7b7b7b", "#000000"],
   },
   light: {
-    background: "#ffffff",
+    background: AVERAGE.light,
     base: ["#ffffff", "#848484", "#000000", "#e1e1e1", "#c3c3c3"],
     overlay: ["#ffffff", "#000000", "#848484", "#ffffff"],
   },
@@ -55,7 +67,7 @@ export function AnimatedBackground() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
       style={{ backgroundColor: palette.background }}
     >
       <MeshGradient

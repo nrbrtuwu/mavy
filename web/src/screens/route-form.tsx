@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { useKeptState } from "@/hooks/use-kept-state"
 import { ArrowUpDown, Search, X } from "lucide-react"
 
 import { Screen, ScreenSection } from "@/components/layout"
@@ -21,7 +22,7 @@ function StationField({
   value: Station | null
   onChange: (s: Station | null) => void
 }) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useKeptState(`route-form:query:${id}`, "")
   const { stations, error } = useStationSearch(value ? "" : query)
   return (
     <div className="flex flex-col gap-2">
@@ -55,9 +56,9 @@ function StationField({
 }
 
 export function RouteFormScreen() {
-  const [from, setFrom] = useState<Station | null>(null)
-  const [to, setTo] = useState<Station | null>(null)
-  const [time, setTime] = useState("")
+  const [from, setFrom] = useKeptState<Station | null>("route-form:from", null)
+  const [to, setTo] = useKeptState<Station | null>("route-form:to", null)
+  const [time, setTime] = useKeptState("route-form:time", "")
   const [message, setMessage] = useState<string | null>(null)
 
   const submit = (e: FormEvent) => {

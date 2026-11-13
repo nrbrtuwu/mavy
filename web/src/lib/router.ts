@@ -1,7 +1,7 @@
 // Hash router (no dependency). Routes:
 //   #/                          start page (chosen in settings, default: route search)
 //   #/kedvencek                 favorites
-//   #/beallitasok               settings (linked only from the page footer)
+//   #/beallitasok               settings (last navbar item)
 //   #/allomas                   station search
 //   #/tabla/{stationId}         departure board
 //   #/utvonal                   route search form
