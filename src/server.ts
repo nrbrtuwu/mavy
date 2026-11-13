@@ -145,6 +145,22 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
     return { stations: tt.searchStations(q.q) };
   });
 
+  // Every station, for searching in the browser without a request per keystroke.
+  // Changes only with a new GTFS import, so the import time is the ETag: browsers
+  // revalidate cheaply (304) and download again only after a re-import.
+  let allStations: { etag: string; body: string } | null = null;
+  app.get('/api/stations/all', async (req, reply) => {
+    const tt = getTimetable();
+    if (!tt) return noTimetable(reply);
+    const etag = `"stations-${tt.meta().imported_at ?? 'unknown'}"`;
+    if (!allStations || allStations.etag !== etag) {
+      allStations = { etag, body: JSON.stringify({ stations: tt.allStations() }) };
+    }
+    reply.header('etag', etag).header('cache-control', 'no-cache');
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type('application/json; charset=utf-8').send(allStations.body);
+  });
+
   app.get('/api/departures', async (req, reply) => {
     const q = parse(DeparturesQuery, req.query, reply);
     if (!q) return reply;

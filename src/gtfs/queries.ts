@@ -176,6 +176,19 @@ export class Timetable {
     ).all({ $q: q, $limit: limit });
   }
 
+  /**
+   * Every top-level station (the same set searchStations looks in), sorted by name.
+   * The frontend loads this once and searches it locally (~1200 stations for MÁV).
+   */
+  allStations(): Station[] {
+    return this.q<Station>(
+      `SELECT stop_id AS id, stop_name AS name FROM stops
+       WHERE parent_station IS NULL AND COALESCE(location_type, 0) IN (0, 1)
+         AND stop_name IS NOT NULL
+       ORDER BY stop_name`,
+    ).all({});
+  }
+
   /** A station and all its stop_ids (the station itself plus its platforms). Child ids resolve to the parent. */
   station(id: string): { station: Station; stopIds: string[] } | null {
     const row = this.q<{ stop_id: string; stop_name: string; parent_station: string | null }>(

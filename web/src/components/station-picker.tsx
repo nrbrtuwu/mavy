@@ -1,16 +1,21 @@
 // Station search input with a result list. Used on the station search and route form screens.
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { MapPin, Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { api, errorMessage } from "@/lib/api"
+import { loadStationList, onStationListLoaded, searchStationsLocal, stationList } from "@/lib/stations"
 import type { Station, StationsResponse } from "@/lib/types"
 
-/** Search results kept in memory, so returning to a screen shows them at once. */
+/** Server search results kept in memory (only used until the station list has loaded). */
 const resultCache = new Map<string, Station[]>()
 
-/** Debounced station search. stations = null while the query is too short. */
+/**
+ * Station search. With the station list loaded (normally right after start-up): instant,
+ * in memory, no request per keystroke. Until then: debounced server search.
+ * stations = null while the query is too short.
+ */
 export function useStationSearch(query: string): { stations: Station[] | null; error: string | null } {
   const [result, setResult] = useState<{ q: string; stations: Station[] | null; error: string | null }>({
     q: "",
@@ -18,9 +23,15 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
     error: null,
   })
   const q = query.trim()
+  const local = useSyncExternalStore(onStationListLoaded, stationList)
+  const localResults = useMemo(() => (local && q.length >= 2 ? searchStationsLocal(local, q) : null), [local, q])
 
   useEffect(() => {
-    if (q.length < 2 || resultCache.has(q)) return
+    void loadStationList()
+  }, [])
+
+  useEffect(() => {
+    if (local || q.length < 2 || resultCache.has(q)) return
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       try {
@@ -36,9 +47,10 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
       controller.abort()
       window.clearTimeout(timer)
     }
-  }, [q])
+  }, [local, q])
 
   if (q.length < 2) return { stations: null, error: null }
+  if (localResults) return { stations: localResults, error: null }
   const cached = resultCache.get(q)
   if (cached) return { stations: cached, error: null }
   if (result.q !== q) return { stations: null, error: null }

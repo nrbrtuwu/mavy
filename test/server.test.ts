@@ -48,6 +48,17 @@ describe('api', () => {
     expect((await get('/api/stations?q=%20')).statusCode).toBe(400);
   });
 
+  it('/api/stations/all: every top-level station, revalidated with an ETag', async () => {
+    const res = await get('/api/stations/all');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().stations.map((s: { id: string }) => s.id)).toEqual(['BPK', 'DEB', 'GYOR', 'SZOL']);
+    const etag = res.headers.etag as string;
+    expect(etag).toMatch(/^"stations-/);
+    expect(res.headers['cache-control']).toBe('no-cache');
+    const again = await app.inject({ method: 'GET', url: '/api/stations/all', headers: { 'if-none-match': etag } });
+    expect(again.statusCode).toBe(304);
+  });
+
   it('/api/departures', async () => {
     const res = await get('/api/departures?station=BPK&limit=2');
     expect(res.statusCode).toBe(200);

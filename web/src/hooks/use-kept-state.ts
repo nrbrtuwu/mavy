@@ -5,8 +5,11 @@ import { useCallback, useState, type SetStateAction } from "react"
 
 const values = new Map<string, unknown>()
 
-export function useKeptState<T>(key: string, initial: T): [T, (value: SetStateAction<T>) => void] {
-  const [value, setValue] = useState<T>(() => (values.has(key) ? (values.get(key) as T) : initial))
+export function useKeptState<T>(key: string, initial: T | (() => T)): [T, (value: SetStateAction<T>) => void] {
+  const [value, setValue] = useState<T>(() => {
+    if (values.has(key)) return values.get(key) as T
+    return typeof initial === "function" ? (initial as () => T)() : initial
+  })
   const set = useCallback(
     (next: SetStateAction<T>) => {
       setValue((prev) => {
@@ -18,4 +21,9 @@ export function useKeptState<T>(key: string, initial: T): [T, (value: SetStateAc
     [key],
   )
   return [value, set]
+}
+
+/** Set a kept value from outside its screen (used the next time that screen mounts). */
+export function setKept<T>(key: string, value: T): void {
+  values.set(key, value)
 }

@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
@@ -7,8 +7,10 @@ import { DelayReason, DelayText, LiveStatus, TimeBlock } from "@/components/trai
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { setKept } from "@/hooks/use-kept-state"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
+import { writeLastRoute } from "@/lib/last-route"
 import { durationText, platformText, timeParts } from "@/lib/format"
 import { href } from "@/lib/router"
 import type { Connection, RouteResponse } from "@/lib/types"
@@ -23,6 +25,16 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
     [from, to, time],
   )
   const { data, error, dataTime, savedAt, refreshError } = useLiveData(`route:${from}:${to}:${time}`, load)
+
+  // The route last looked at (form, Visszaút or a favorite) becomes the form's stations.
+  const fromStation = data?.from
+  const toStation = data?.to
+  useEffect(() => {
+    if (!fromStation || !toStation) return
+    writeLastRoute({ from: fromStation, to: toStation })
+    setKept("route-form:from", fromStation)
+    setKept("route-form:to", toStation)
+  }, [fromStation, toStation])
 
   if (error) {
     return (

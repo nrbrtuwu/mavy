@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client"
 
 import "./index.css"
 import { App } from "./App"
+import { loadStationList } from "./lib/stations"
+
+// Station names for instant search, fetched once at start-up (in the background).
+void loadStationList()
 
 // Light / dark mode follows the device setting (shadcn uses the .dark class).
 const dark = window.matchMedia("(prefers-color-scheme: dark)")
