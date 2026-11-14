@@ -1,15 +1,17 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { ChevronRight } from "lucide-react"
+import { cn } from "cn"
 
 import { FavoriteButton } from "@/components/favorite-button"
 import { Screen, ScreenList, ScreenSection, ScreenSkeleton } from "@/components/layout"
-import { DelayReason, DelayText, LiveStatus, TimeBlock } from "@/components/train-bits"
+import { DelayReason, DelayText, LiveStatus, TimeBlock, TrainBadge } from "@/components/train-bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { platformText } from "@/lib/format"
 import { href } from "@/lib/router"
+import { useSettings } from "@/lib/settings"
+import { simulateBoard } from "@/lib/simulate"
 import type { BoardResponse, Departure } from "@/lib/types"
 
 export function BoardScreen({ stationId }: { stationId: string }) {
@@ -18,7 +20,14 @@ export function BoardScreen({ stationId }: { stationId: string }) {
       api<BoardResponse>(`/api/departures?station=${encodeURIComponent(stationId)}&limit=30`, signal),
     [stationId],
   )
-  const { data, error, dataTime, savedAt, refreshError } = useLiveData(`board:${stationId}`, load)
+  const live = useLiveData(`board:${stationId}`, load)
+  const { error, dataTime, savedAt, refreshError } = live
+  // Settings > Szimulált késések: made-up delays for previewing the design.
+  const { simulateDelays } = useSettings()
+  const data = useMemo(
+    () => (live.data && simulateDelays ? simulateBoard(live.data) : live.data),
+    [live.data, simulateDelays],
+  )
 
   if (error) {
     return (
@@ -37,7 +46,13 @@ export function BoardScreen({ stationId }: { stationId: string }) {
       actions={<FavoriteButton favorite={{ type: "station", id: data.station.id, name: data.station.name }} />}
     >
       <ScreenSection>
-        <LiveStatus live={data.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+        <LiveStatus
+          live={data.live}
+          dataTime={dataTime}
+          savedAt={savedAt}
+          refreshError={refreshError}
+          demo={simulateDelays}
+        />
       </ScreenSection>
       {data.departures.length === 0 ? (
         <ScreenSection>
@@ -55,28 +70,32 @@ export function BoardScreen({ stationId }: { stationId: string }) {
 }
 
 function DepartureRow({ d, showLive }: { d: Departure; showLive: boolean }) {
+  // Stretched link: the headsign <a> covers the whole row (after:inset-0), the badge button
+  // sits above it (z-10), so tapping the badge shows its popup and anywhere else opens the train.
   return (
-    <li>
-      <a
-        href={href.train(d.tripId, d.serviceDate)}
-        className="flex min-h-14 items-start gap-3 px-4 py-3 hover:bg-muted/50 active:bg-muted"
-      >
-        <TimeBlock time={d.departure} cancelled={d.cancelled} />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className={d.cancelled ? "font-medium text-muted-foreground line-through" : "font-medium"}>
-            {d.headsign ?? "–"}
-          </span>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {d.label && <Badge variant="outline">{d.label}</Badge>}
-            {d.platform && <span>{platformText(d.platform)}</span>}
-          </div>
-          <DelayReason reason={d.reason} />
+    // Vertically centred: the time, the headsign/badge block and the arrow line up in the middle.
+    <li className="relative flex min-h-14 items-center gap-3 px-4 py-3 hover:bg-muted/50 active:bg-muted">
+      <TimeBlock time={d.departure} cancelled={d.cancelled} showLive={showLive} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <a
+          href={href.train(d.tripId, d.serviceDate)}
+          className={cn(
+            "font-medium outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring",
+            d.cancelled && "text-muted-foreground line-through",
+          )}
+        >
+          {d.headsign ?? "–"}
+        </a>
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <TrainBadge label={d.label} />
+          {d.platform && <span>{platformText(d.platform)}</span>}
         </div>
-        <div className="flex items-center gap-1 pt-0.5 text-sm">
-          {(showLive || d.cancelled) && <DelayText time={d.departure} cancelled={d.cancelled} />}
-          <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-        </div>
-      </a>
+        <DelayReason reason={d.reason} />
+      </div>
+      <div className="flex items-center gap-1 text-sm">
+        {(showLive || d.cancelled) && <DelayText time={d.departure} cancelled={d.cancelled} />}
+        <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+      </div>
     </li>
   )
 }

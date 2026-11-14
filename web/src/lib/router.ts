@@ -61,6 +61,59 @@ export const href = {
   train: (tripId: string, date: string) => `#/vonat/${enc(tripId)}/${date}`,
 }
 
+/**
+ * Where Back goes when there is no earlier page in the app (opened from a link, a favorite
+ * on a fresh start, …). null for the top-level pages (the navbar items), which get no Back button.
+ */
+export function parentHref(route: Route): string | null {
+  switch (route.name) {
+    case "board":
+      return href.stations()
+    case "route":
+      return href.routeForm()
+    case "train":
+    case "notFound":
+      return href.start()
+    default:
+      return null
+  }
+}
+
+// In-app history depth, kept in history.state so it survives back/forward and reloads:
+// 0 = the first page opened in this tab, +1 for every page opened from there.
+function historyDepth(): number {
+  const s = window.history.state as { mavyDepth?: unknown } | null
+  return typeof s?.mavyDepth === "number" ? s.mavyDepth : -1
+}
+
+let lastDepth = 0
+
+/** Call once at start-up: numbers the history entries the app creates (see canGoBack). */
+export function trackHistoryDepth() {
+  if (historyDepth() < 0) window.history.replaceState({ mavyDepth: 0 }, "")
+  lastDepth = historyDepth()
+  window.addEventListener("hashchange", () => {
+    // A link click makes a new entry without state; back/forward restore the stored depth.
+    if (historyDepth() < 0) window.history.replaceState({ mavyDepth: lastDepth + 1 }, "")
+    lastDepth = historyDepth()
+  })
+}
+
+/** True when the previous history entry is a page of this app. */
+export function canGoBack(): boolean {
+  return historyDepth() > 0
+}
+
+/** Back: the previous page of the app, or else `fallback` (replacing the current entry). */
+export function navigateBack(fallback: string | null) {
+  if (canGoBack()) {
+    window.history.back()
+  } else if (fallback) {
+    window.history.replaceState({ mavyDepth: Math.max(historyDepth(), 0) }, "", fallback)
+    window.dispatchEvent(new HashChangeEvent("hashchange"))
+  }
+}
+
 function subscribe(onChange: () => void) {
   window.addEventListener("hashchange", onChange)
   return () => window.removeEventListener("hashchange", onChange)

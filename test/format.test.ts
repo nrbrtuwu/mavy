@@ -10,6 +10,8 @@ import {
   shiftDate,
   timeParts,
   today,
+  shortTrainLabel,
+  trainCategory,
 } from '../web/src/lib/format.ts';
 
 const NOW = Date.parse('2026-11-12T23:30:00+01:00');
@@ -65,5 +67,40 @@ describe('format', () => {
     expect(platformText(null)).toBe('');
     expect(liveText({ state: 'none', fetchedAt: null })).toContain('Nincs élő késésadat');
     expect(liveText({ state: 'stale', fetchedAt: '2026-11-12T05:54:40.000Z' })).toBe('Az élő adat nem friss (utoljára 06:54)');
+  });
+
+  test('trainCategory: IC yellow, S-lines and Sz blue, RJX red, IR green, the rest neutral', () => {
+    expect(trainCategory('IC 562 TOKAJ')).toBe('ic');
+    expect(trainCategory('IC 742 BÉKÉS')).toBe('ic');
+    expect(trainCategory('S80')).toBe('szemely');
+    expect(trainCategory('S60')).toBe('szemely');
+    expect(trainCategory('Sz 359')).toBe('szemely');
+    expect(trainCategory('rjx 62')).toBe('rjx');
+    expect(trainCategory('RJX 64')).toBe('rjx');
+    expect(trainCategory('IR85 MÁTRA')).toBe('ir');
+    expect(trainCategory('IR87 AGRIA')).toBe('ir');
+    expect(trainCategory('Z60')).toBe('z');
+    expect(trainCategory('G40')).toBe('g');
+    expect(trainCategory('Pótló 5267')).toBe('potlo');
+    expect(trainCategory('ICB 873 BALATON')).toBe('icb');
+    expect(trainCategory('B')).toBe('b');
+    expect(trainCategory('1A')).toBe('1a');
+    expect(trainCategory('EC 142 LISZT FERENC')).toBe('ec');
+    expect(trainCategory('EN 476 METROPOL')).toBe('en');
+    for (const other of ['VESz 5420', 'BESZ 6031', 'SZOLNOK', 'IRÁNY', 'Zug', 'Bp', '39830', '6212 Budapest - Debrecen']) {
+      expect(trainCategory(other)).toBeNull();
+    }
+    expect(trainCategory(null)).toBeNull();
+  });
+
+  test('shortTrainLabel: kind or line code in capitals', () => {
+    expect(shortTrainLabel('IC 562 TOKAJ')).toBe('IC');
+    expect(shortTrainLabel('rjx 62')).toBe('RJX');
+    expect(shortTrainLabel('S80')).toBe('S80');
+    expect(shortTrainLabel('IR85 MÁTRA')).toBe('IR85');
+    expect(shortTrainLabel('Sz 359')).toBe('SZ');
+    expect(shortTrainLabel('Pótló 5267')).toBe('PÓTLÓ');
+    expect(shortTrainLabel('EC 142 LISZT FERENC')).toBe('EC');
+    expect(shortTrainLabel(' 39830 ')).toBe('39830');
   });
 });

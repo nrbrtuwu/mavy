@@ -1,12 +1,13 @@
-import { useEffect, type ReactNode } from "react"
-import { Route as RouteIcon, Search, Settings, Star, TrainFront } from "lucide-react"
+import { createContext, useContext, useEffect, type ReactNode } from "react"
+import { ArrowLeft, Route as RouteIcon, Search, Settings, Star, TrainFront } from "lucide-react"
 import { cn } from "cn"
 
 import { AnimatedBackground } from "@/components/background"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { href } from "@/lib/router"
+import { useEdgeSwipeBack } from "@/hooks/use-edge-swipe-back"
+import { href, navigateBack } from "@/lib/router"
 import { useSettings } from "@/lib/settings"
 
 export type Section = "favorites" | "station" | "route" | "settings" | null
@@ -18,8 +19,20 @@ const NAV = [
   { section: "settings", label: "Beállítások", href: href.settings(), icon: Settings },
 ] as const
 
-export function AppShell({ section, children }: { section: Section; children: ReactNode }) {
+export function AppShell({
+  section,
+  backHref,
+  children,
+}: {
+  section: Section
+  /** Where Back goes without an earlier app page; null on top-level pages (no Back button). */
+  backHref: string | null
+  children: ReactNode
+}) {
   const { animatedBackground } = useSettings()
+
+  // Edge swipe in the iPhone home-screen app: the previous page (any screen), or the parent.
+  useEdgeSwipeBack(() => navigateBack(backHref))
 
   // The page itself must stay at the top (only #app-scroll scrolls). Fingers cannot scroll
   // it (overflow: hidden), but iOS may nudge it, e.g. when the keyboard opens: snap back.
@@ -79,11 +92,18 @@ export function AppShell({ section, children }: { section: Section; children: Re
           </nav>
         </div>
       </header>
-      <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-4 p-4">{children}</main>
+      {/* The screen's box is as tall as its content (at most the free space) and centred. */}
+      <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col justify-center gap-4 p-4">
+        {/* Screen shows the Back button in its box's top right corner. */}
+        <BackContext.Provider value={backHref}>{children}</BackContext.Provider>
+      </main>
       </div>
     </>
   )
 }
+
+/** Where the current screen's Back goes (see AppShell's backHref); null = no Back button. */
+const BackContext = createContext<string | null>(null)
 
 /** The element the app scrolls in (the page itself does not scroll). */
 export const APP_SCROLL_ID = "app-scroll"
@@ -96,8 +116,9 @@ function isTypingInField(): boolean {
 
 /**
  * One box per screen: title, description and actions on top, the screen's content below,
- * so no text sits directly on the animated background. The box fills the space between the
- * navbar and the settings link; its title stays put and only the content scrolls inside.
+ * so no text sits directly on the animated background. The box is as tall as its content and
+ * centred below the navbar; when the content is longer than the free space, the box fills it,
+ * its title stays put and only the content scrolls inside.
  */
 export function Screen({
   title,
@@ -110,12 +131,29 @@ export function Screen({
   actions?: ReactNode
   children?: ReactNode
 }) {
+  const backHref = useContext(BackContext)
   return (
-    <Card className="min-h-0 flex-1 gap-0 py-0">
+    // Content height, shrinking to the free space when longer (then the body scrolls inside).
+    <Card className="min-h-0 gap-0 py-0">
       <div className="flex shrink-0 flex-col gap-3 p-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          {description && <div className="text-sm text-muted-foreground">{description}</div>}
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+            {description && <div className="text-sm text-muted-foreground">{description}</div>}
+          </div>
+          {backHref !== null && (
+            <Button
+              variant="outline"
+              size="icon"
+              // 44px tap target, like the navbar buttons.
+              className="size-11 shrink-0"
+              onClick={() => navigateBack(backHref)}
+              aria-label="Vissza"
+              title="Vissza"
+            >
+              <ArrowLeft aria-hidden />
+            </Button>
+          )}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
@@ -141,7 +179,7 @@ export function ScreenList({ children }: { children: ReactNode }) {
 /** Placeholder while a screen loads, in the same box shape. */
 export function ScreenSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <Card className="min-h-0 flex-1 gap-3 overflow-hidden p-4" aria-label="Betöltés…">
+    <Card className="min-h-0 gap-3 overflow-hidden p-4" aria-label="Betöltés…">
       <Skeleton className="h-6 w-2/5" />
       <Skeleton className="h-4 w-3/5" />
       {Array.from({ length: rows }, (_, i) => (

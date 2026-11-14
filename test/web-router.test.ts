@@ -1,6 +1,6 @@
 // Frontend routing and the start page setting (pure parts, no DOM).
 import { describe, expect, test } from 'bun:test';
-import { href, parseHash, resolveStart } from '../web/src/lib/router.ts';
+import { href, parentHref, parseHash, resolveStart } from '../web/src/lib/router.ts';
 import { DEFAULT_SETTINGS, parseSettings } from '../web/src/lib/settings.ts';
 
 describe('parseHash', () => {
@@ -37,7 +37,7 @@ describe('start page', () => {
   });
 
   test('stored settings: valid values kept, anything else falls back to the default', () => {
-    const on = { animatedBackground: true };
+    const on = { animatedBackground: true, simulateDelays: false };
     expect(parseSettings('{"startPage":"favorites"}')).toEqual({ startPage: 'favorites', ...on });
     expect(parseSettings('{"startPage":"station"}')).toEqual({ startPage: 'station', ...on });
     expect(parseSettings(null)).toEqual({ startPage: 'route', ...on });
@@ -50,11 +50,30 @@ describe('start page', () => {
 describe('animated background setting', () => {
   test('on by default, can be turned off, junk means on', () => {
     expect(DEFAULT_SETTINGS.animatedBackground).toBe(true);
-    expect(parseSettings('{"animatedBackground":false}')).toEqual({ startPage: 'route', animatedBackground: false });
+    expect(parseSettings('{"animatedBackground":false}')).toEqual({ startPage: 'route', animatedBackground: false, simulateDelays: false });
     expect(parseSettings('{"startPage":"station","animatedBackground":false}')).toEqual({
       startPage: 'station',
       animatedBackground: false,
+      simulateDelays: false,
     });
     expect(parseSettings('{"animatedBackground":"no"}').animatedBackground).toBe(true);
+  });
+
+  test('simulated delays off by default, can be turned on', () => {
+    expect(DEFAULT_SETTINGS.simulateDelays).toBe(false);
+    expect(parseSettings('{"simulateDelays":true}').simulateDelays).toBe(true);
+    expect(parseSettings('{"simulateDelays":1}').simulateDelays).toBe(false);
+  });
+});
+
+describe('parentHref (Back without an earlier app page)', () => {
+  test('detail screens go to their parent, top-level pages have no Back', () => {
+    expect(parentHref(parseHash('#/tabla/267'))).toBe('#/allomas');
+    expect(parentHref(parseHash('#/utvonal/1/2'))).toBe('#/utvonal');
+    expect(parentHref(parseHash('#/vonat/abc/20261114'))).toBe('#/');
+    expect(parentHref(parseHash('#/nincs-ilyen'))).toBe('#/');
+    for (const top of ['#/', '#/utvonal', '#/allomas', '#/kedvencek', '#/beallitasok']) {
+      expect(parentHref(parseHash(top))).toBeNull();
+    }
   });
 });

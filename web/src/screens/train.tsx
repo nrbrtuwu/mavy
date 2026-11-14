@@ -1,15 +1,16 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { cn } from "cn"
 
 import { Screen, ScreenSection, ScreenSkeleton } from "@/components/layout"
-import { DelayReason, DelayText, LiveStatus } from "@/components/train-bits"
+import { DelayReason, DelayText, ExpectedTime, LiveStatus, TrainBadge } from "@/components/train-bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { serviceDateLabel, timeParts } from "@/lib/format"
 import { href } from "@/lib/router"
+import { useSettings } from "@/lib/settings"
+import { simulateTrip } from "@/lib/simulate"
 import type { TimeInfo, Trip } from "@/lib/types"
 
 export function TrainScreen({ tripId, date }: { tripId: string; date: string }) {
@@ -17,7 +18,12 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
     (signal: AbortSignal) => api<Trip>(`/api/train/${encodeURIComponent(tripId)}?date=${date}`, signal),
     [tripId, date],
   )
-  const { data: t, error, dataTime, savedAt, refreshError } = useLiveData(`train:${tripId}:${date}`, load)
+  const live = useLiveData(`train:${tripId}:${date}`, load)
+  const { error, dataTime, savedAt, refreshError } = live
+  // Settings > Szimulált késések: made-up delays for previewing the design (only on days it runs).
+  const { simulateDelays } = useSettings()
+  const demo = simulateDelays && !!live.data?.runsOnDate
+  const t = useMemo(() => (live.data && demo ? simulateTrip(live.data) : live.data), [live.data, demo])
 
   if (error) {
     return (
@@ -34,14 +40,14 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
       title={t.headsign ? `→ ${t.headsign}` : (t.label ?? "Vonat")}
       description={
         <span className="flex flex-wrap items-center gap-2">
-          {t.label && <Badge variant="outline">{t.label}</Badge>}
+          <TrainBadge label={t.label} />
           <span>{serviceDateLabel(t.serviceDate)}</span>
         </span>
       }
     >
       <ScreenSection>
         <TrainState trip={t} />
-        <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
+        <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} demo={demo} />
       </ScreenSection>
       <div className="border-t">
         <Table>
@@ -113,14 +119,19 @@ function TrainState({ trip }: { trip: Trip }) {
 
 function TimeCell({ time, cancelled, showLive }: { time: TimeInfo | null; cancelled: boolean; showLive: boolean }) {
   if (!time) return <TableCell />
+  // Same style as the train cards: planned time, then the small expected time under it.
   const p = timeParts(time.planned)
-  const late = !cancelled && time.expected !== null && (time.delayMin ?? 0) > 0
+  const late = !cancelled && (time.delayMin ?? 0) > 0
   return (
-    <TableCell className="align-top tabular-nums">
-      <span className={cn(late && "text-muted-foreground line-through")}>{p.time}</span>
+    <TableCell className="align-top leading-tight tabular-nums">
+      <span className="block">{p.time}</span>
       {p.day && <span className="block text-xs text-muted-foreground">{p.day}</span>}
-      {late && <span className="block font-semibold text-destructive">{timeParts(time.expected).time}</span>}
-      {showLive && !cancelled && <DelayText time={time} cancelled={false} className="block text-xs" />}
+      {!cancelled && (
+        <span className="block">
+          <ExpectedTime time={time} cancelled={false} showLive={showLive} />
+        </span>
+      )}
+      {showLive && late && <DelayText time={time} cancelled={false} className="block text-xs" />}
     </TableCell>
   )
 }

@@ -91,6 +91,65 @@ export function platformText(p: string | null | undefined): string {
   return /^\d+$/.test(p) ? `${p}. vágány` : `${p} vágány`
 }
 
+export type TrainCategory =
+  | "ic"
+  | "szemely"
+  | "rjx"
+  | "ir"
+  | "z"
+  | "g"
+  | "potlo"
+  | "icb"
+  | "b"
+  | "1a"
+  | "ec"
+  | "en"
+  | null
+
+/**
+ * Train kind from its label, for the badge colour. Colours chosen by the owner, or the
+ * official route_color from MÁV's GTFS feed where it has one (checked 2026-11), or MÁV's
+ * dark blue from its own app for EC/EN:
+ *   "IC 562 TOKAJ"        -> ic       yellow (owner)
+ *   "S80", "Sz 359"       -> szemely  blue (owner; feed S-lines #00A0E3)
+ *   "rjx 62"              -> rjx      red (owner)
+ *   "IR85 MÁTRA"          -> ir       green (owner; feed #29803C)
+ *   "Z60"                 -> z        amber (feed #FECC00, zónázó)
+ *   "G40"                 -> g        lime (feed #B0CB1F)
+ *   "Pótló 5267"          -> potlo    yellow (feed #FFFF00, replacement bus)
+ *   "ICB 201 AGRAM", "B"  -> icb / b  yellow (feed #FFFF00)
+ *   "1A"                  -> 1a       orange (feed #F5AD0E)
+ *   "EC 142", "EN 476"    -> ec / en  dark blue (MÁV app #274F96)
+ *   anything else ("VESz 5420", "BESZ 6031", "39830") -> null (neutral, no colour known)
+ */
+export function trainCategory(label: string | null | undefined): TrainCategory {
+  if (!label) return null
+  const first = label.trim().split(/\s+/)[0] ?? ""
+  if (first === "IC") return "ic"
+  if (first === "Sz" || /^S\d+$/.test(first)) return "szemely"
+  if (first.toLowerCase() === "rjx") return "rjx"
+  if (/^IR\d*$/i.test(first)) return "ir"
+  if (/^Z\d+$/.test(first)) return "z"
+  if (/^G\d+$/.test(first)) return "g"
+  if (first === "Pótló") return "potlo"
+  if (first === "ICB") return "icb"
+  if (first === "B") return "b"
+  if (first === "1A") return "1a"
+  if (first === "EC") return "ec"
+  if (first === "EN") return "en"
+  return null
+}
+
+/**
+ * Short badge text: the kind or line code in capitals, the full name stays for the popup.
+ *   "IC 562 TOKAJ" -> "IC", "rjx 62" -> "RJX", "S80" -> "S80", "IR85 MÁTRA" -> "IR85",
+ *   "Sz 359" -> "SZ", "Pótló 5267" -> "PÓTLÓ", "39830" -> "39830"
+ */
+export function shortTrainLabel(label: string): string {
+  const first = label.trim().split(/\s+/)[0] ?? ""
+  return first.toLocaleUpperCase("hu-HU")
+}
+
 /** Line describing the live data state of a screen. */
 export function liveText(live: LiveInfo): string {
   if (live.state === "live") return "Élő késésadat"

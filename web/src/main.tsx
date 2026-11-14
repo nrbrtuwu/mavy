@@ -3,7 +3,11 @@ import { createRoot } from "react-dom/client"
 
 import "./index.css"
 import { App } from "./App"
+import { trackHistoryDepth } from "./lib/router"
 import { loadStationList } from "./lib/stations"
+
+// Lets the Back button and swipe know whether the previous page belongs to the app.
+trackHistoryDepth()
 
 // Station names for instant search, fetched once at start-up (in the background).
 void loadStationList()

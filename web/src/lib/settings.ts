@@ -10,9 +10,11 @@ export interface Settings {
   startPage: StartPage
   /** Animated shader background on or off. */
   animatedBackground: boolean
+  /** Show made-up delays (design preview while no real live source exists). */
+  simulateDelays: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { startPage: "route", animatedBackground: true }
+export const DEFAULT_SETTINGS: Settings = { startPage: "route", animatedBackground: true, simulateDelays: false }
 
 export const START_PAGES: { value: StartPage; label: string; description: string }[] = [
   { value: "route", label: "Útvonal", description: "Keresés két állomás között" },
@@ -26,12 +28,18 @@ const EVENT = "mavy:settings"
 /** Parse stored JSON; anything unknown or broken falls back to the defaults. */
 export function parseSettings(raw: string | null): Settings {
   try {
-    const value = JSON.parse(raw ?? "{}") as { startPage?: unknown; animatedBackground?: unknown } | null
+    const value = JSON.parse(raw ?? "{}") as {
+      startPage?: unknown
+      animatedBackground?: unknown
+      simulateDelays?: unknown
+    } | null
     const start = value?.startPage
     const background = value?.animatedBackground
+    const simulate = value?.simulateDelays
     return {
       startPage: START_PAGES.some((p) => p.value === start) ? (start as StartPage) : DEFAULT_SETTINGS.startPage,
       animatedBackground: typeof background === "boolean" ? background : DEFAULT_SETTINGS.animatedBackground,
+      simulateDelays: typeof simulate === "boolean" ? simulate : DEFAULT_SETTINGS.simulateDelays,
     }
   } catch {
     return DEFAULT_SETTINGS

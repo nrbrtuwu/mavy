@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react"
 
 import { AppShell, Screen, type Section } from "@/components/layout"
 import { Button } from "@/components/ui/button"
-import { href, parseHash, resolveStart, useHash } from "@/lib/router"
+import { href, parentHref, parseHash, resolveStart, useHash } from "@/lib/router"
 import { useSettings } from "@/lib/settings"
 import { BoardScreen } from "@/screens/board"
 import { FavoritesScreen } from "@/screens/favorites"
@@ -65,5 +65,9 @@ export function App() {
       )
   }
 
-  return <AppShell section={section}>{screen}</AppShell>
+  return (
+    <AppShell section={section} backHref={parentHref(route)}>
+      {screen}
+    </AppShell>
+  )
 }

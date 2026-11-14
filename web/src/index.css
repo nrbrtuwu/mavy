@@ -5,6 +5,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* MÁV's badge font (train kinds and line numbers as single glyphs), see lib/mnr.ts.
+   block: its code points are ordinary letters (ǚ, ƚ …) in any other font, never show those. */
+@font-face {
+    font-family: "MNR";
+    src: url("/fonts/MNR2007.ttf") format("truetype");
+    font-display: block;
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
@@ -72,7 +80,8 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    /* Corner radius chosen by the owner (8px); the MNR2007 train badges are ~4px. */
+    --radius: 0.5rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);

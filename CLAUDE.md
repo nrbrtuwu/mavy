@@ -9,7 +9,7 @@ Users: the owner and a few close friends. Not a public product.
 - Route search: next trains from station A to station B
 - Train detail: every stop with planned time, expected time, delay
 - Saved favorites (routes and stations), stored on the device
-- Settings page (last navbar item): start page (default route search), animated background on/off. Stored on the device
+- Settings page (last navbar item): start page (default route search), animated background on/off, "Szimulált késések" (made-up delays to preview the design, off by default, clearly labelled; `web/src/lib/simulate.ts`). Stored on the device
 - Installable PWA, works on phones, shows last cached data when offline
 
 ## Non-goals
@@ -49,8 +49,14 @@ Users: the owner and a few close friends. Not a public product.
 ## Design rules
 
 - shadcn/ui neutral theme everywhere (cards, buttons, badges, inputs, tables, alerts). No custom colour palette.
-- Red (shadcn `destructive`) is the only hue, and only for delays, cancellations and delay reasons. Everything else is neutral.
-  - Delays are also written as text: "+12 perc", "időben", "törölve". Bold from 5 min. Expected time in red, planned time struck through.
+- Hues are limited to:
+  - Red (shadcn `destructive`): delays, cancellations and delay reasons only. Delays are also written as text: "+12 perc", "időben", "törölve". Bold from 5 min.
+  - Times (`TimeBlock` / `ExpectedTime`): planned time on top, the small expected time under it, red when late, green (emerald) when on time, "törölve" when cancelled. Nothing under it without live data.
+  - Train name badges (`TrainBadge`, `trainCategory()` in `web/src/lib/format.ts`): IC yellow, személyvonat (S-lines like S80, and "Sz") blue, RJX red, IR (IR85, IR87 …) green (owner's choices); Z amber, G lime, Pótló / ICB / B yellow, 1A orange (official route_color in MÁV's GTFS); EC / EN dark blue (MÁV app). VESz, BESZ and number-only trains have no known colour and stay neutral. Mapping and sources: `trainCategory()`. They show only the short code in capitals (`shortTrainLabel()`: IC, RJX, S80); tapping opens a popover with the full name. In list rows the badge sits above a stretched row link (never a button inside an `<a>`).
+  - Everything else is neutral.
+- Font: shadcn's Geist for all text. Train badges use MÁV's own badge font MNR2007 (`web/public/fonts/MNR2007.ttf`, from jegy.mav.hu, committed at the owner's request): one glyph per train kind or line, mapped in `web/src/lib/mnr.ts`, coloured with the kind's text colour. Codes without a glyph (ICB, VESz, BESZ, Pótló …) keep the text badge.
+- Corners: `--radius: 0.5rem` (8px, owner's choice) in `web/src/index.css`, text badges `rounded-md`. Switches and radio buttons stay round.
+- Back: an arrow-left icon button ("Vissza" for screen readers) in the top right of the screen's box on detail screens (board, route results, train; `parentHref()` in `web/src/lib/router.ts`). It goes to the previous app page, or to the parent screen when there is none. In the iPhone home-screen app (no system swipe-back there) a left-edge swipe does the same (`web/src/hooks/use-edge-swipe-back.ts`); in browsers and on Android the browser/system Back is left alone.
 - Light and dark mode follow the device (`prefers-color-scheme` sets shadcn's `.dark` class).
 - Generous tap targets (min 44px). Lucide icons.
 - App icon, theme colour and splash screen stay greyscale: simple monochrome icon (192px, 512px, maskable).
