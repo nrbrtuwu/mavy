@@ -48,7 +48,19 @@ The timetable is not in this repository: MÁV hands it out on request, and it mu
    With an empty `data/gtfs/` it prints these instructions instead. Re-import when MÁV publishes a new
    feed; stop the server first, Windows keeps the database file locked while it runs.
 
-### 4. Build and start
+### 4. Get MÁV's train badge font (optional)
+
+Train badges (IC, S80, IR85 …) are drawn with MÁV's own badge font, MNR2007. It belongs to MÁV and is
+not licensed for redistribution, so it is not in this repository. Download it from MÁV's ticket site:
+
+```bash
+bun run fetch-font
+```
+
+It lands in `web/public/fonts/` (gitignored) and goes into the next build. Without it the app shows
+plain text badges.
+
+### 5. Build and start
 
 ```bash
 bun run build
@@ -69,6 +81,7 @@ Runs the API server (port 3000, restarts on changes) and the UI with hot reload;
 bun test              # tests (fake GTFS fixture, no real data needed)
 bun run typecheck     # server and web
 bun run icons         # regenerate the app icons
+bun run fetch-font    # download MÁV's badge font (not in git)
 ```
 
 `CLAUDE.md` describes the project rules, layout and design decisions.

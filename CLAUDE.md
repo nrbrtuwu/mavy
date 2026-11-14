@@ -54,7 +54,7 @@ Users: the owner and a few close friends. Not a public product.
   - Times (`TimeBlock` / `ExpectedTime`): planned time on top, the small expected time under it, red when late, green (emerald) when on time, "törölve" when cancelled. Nothing under it without live data.
   - Train name badges (`TrainBadge`, `trainCategory()` in `web/src/lib/format.ts`): IC yellow, személyvonat (S-lines like S80, and "Sz") blue, RJX red, IR (IR85, IR87 …) green (owner's choices); Z amber, G lime, Pótló / ICB / B yellow, 1A orange (official route_color in MÁV's GTFS); EC / EN dark blue (MÁV app). VESz, BESZ and number-only trains have no known colour and stay neutral. Mapping and sources: `trainCategory()`. They show only the short code in capitals (`shortTrainLabel()`: IC, RJX, S80); tapping opens a popover with the full name. In list rows the badge sits above a stretched row link (never a button inside an `<a>`).
   - Everything else is neutral.
-- Font: shadcn's Geist for all text. Train badges use MÁV's own badge font MNR2007 (`web/public/fonts/MNR2007.ttf`, from jegy.mav.hu, committed at the owner's request): one glyph per train kind or line, mapped in `web/src/lib/mnr.ts`, coloured with the kind's text colour. Codes without a glyph (ICB, VESz, BESZ, Pótló …) keep the text badge.
+- Font: shadcn's Geist for all text. Train badges use MÁV's own badge font MNR2007 (`web/public/fonts/MNR2007.ttf`, gitignored: no licence to redistribute; `bun run fetch-font` downloads it from jegy.mav.hu, and without it `useMnrFont()` falls back to text badges): one glyph per train kind or line, mapped in `web/src/lib/mnr.ts`, coloured with the kind's text colour. Codes without a glyph (ICB, VESz, BESZ, Pótló …) keep the text badge.
 - Corners: `--radius: 0.5rem` (8px, owner's choice) in `web/src/index.css`, text badges `rounded-md`. Switches and radio buttons stay round.
 - Back: an arrow-left icon button ("Vissza" for screen readers) in the top right of the screen's box on detail screens (board, route results, train; `parentHref()` in `web/src/lib/router.ts`). It goes to the previous app page, or to the parent screen when there is none. In the iPhone home-screen app (no system swipe-back there) a left-edge swipe does the same (`web/src/hooks/use-edge-swipe-back.ts`); in browsers and on Android the browser/system Back is left alone.
 - Light and dark mode follow the device (`prefers-color-scheme` sets shadcn's `.dark` class).
@@ -77,6 +77,7 @@ src/
 test/                bun:test tests, fixtures/gtfs/ = tiny fake feed
 scripts/dev.ts       runs server + Vite together
 scripts/make-icons.ts  generates web/public/icons/ (SVG + greyscale PNGs)
+scripts/fetch-font.ts  downloads MÁV's MNR2007 badge font (gitignored)
 web/                 frontend (React + Tailwind + shadcn/ui, own package.json)
   src/App.tsx        hash router -> screens/
   src/screens/       route form/results, station search, board, train, favorites, settings
@@ -106,6 +107,7 @@ docs/live-api/       captured request/response samples
 - `bun run typecheck` type-check server and web
 - `bun test` run tests (bun:test, Vitest-compatible API)
 - `bun run icons` regenerate the app icons
+- `bun run fetch-font` download MÁV's MNR2007 badge font into `web/public/fonts/` (not in git)
 - The server fills in sw.js's file list and content hash on each request, so no manual cache version bumps
 
 ## Conventions

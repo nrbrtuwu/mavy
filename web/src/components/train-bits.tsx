@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { clock, delayStatus, liveText, savedLabel, shortTrainLabel, timeParts, trainCategory, type TrainCategory } from "@/lib/format"
+import { useMnrFont } from "@/hooks/use-mnr-font"
 import { mnrGlyph } from "@/lib/mnr"
 import type { LiveInfo, TimeInfo } from "@/lib/types"
 
@@ -105,10 +106,12 @@ const CATEGORY_NAMES: Partial<Record<NonNullable<TrainCategory>, string>> = {
  * a stretched link with this badge above it, see `relative z-10`).
  */
 export function TrainBadge({ label, className }: { label: string | null; className?: string }) {
+  const fontOk = useMnrFont()
   if (!label) return null
   const category = trainCategory(label)
   const short = shortTrainLabel(label)
-  const glyph = mnrGlyph(short)
+  // Without the font file (not in git, `bun run fetch-font`) every badge is a text badge.
+  const glyph = fontOk ? mnrGlyph(short) : null
   const badge = glyph ? (
     // MÁV's own badge from the MNR2007 font, in the kind's colour (text colour only).
     <span
