@@ -18,6 +18,7 @@ const BLACK = 0x00;
 const WHITE = 0xff;
 
 // Painted in order; later shapes cover earlier ones.
+// The header logo (web/src/components/app-logo.tsx) draws the same train: keep them in sync.
 const SHAPES: Shape[] = [
   { kind: 'rect', x1: 0, y1: 0, x2: 100, y2: 100, grey: BLACK }, // background
   { kind: 'rect', x1: 30, y1: 22, x2: 70, y2: 72, grey: WHITE }, // body

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, type ReactNode } from "react"
-import { ArrowLeft, Route as RouteIcon, Search, Settings, Star, TrainFront } from "lucide-react"
+import { ArrowLeft, Route as RouteIcon, Search, Settings, Star } from "lucide-react"
+import { AppLogo } from "@/components/app-logo"
 import { cn } from "cn"
 
 import { AnimatedBackground } from "@/components/background"
@@ -65,7 +66,7 @@ export function AppShell({
       <header className="shrink-0 border-b bg-background/75 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4">
           <a href={href.start()} className="mr-auto flex items-center gap-2 font-semibold">
-            <TrainFront className="size-5" aria-hidden />
+            <AppLogo />
             Mávy
           </a>
           <nav className="flex gap-1" aria-label="Fő menü">
