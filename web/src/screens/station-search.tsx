@@ -8,7 +8,7 @@ export function StationSearchScreen() {
   const [query, setQuery] = useKeptState("station-search:query", "")
   const { stations, error } = useStationSearch(query)
   return (
-    <Screen title="Állomás keresése" description="Írd be az állomás nevét, ékezetek nélkül is megy.">
+    <Screen title="Állomás keresése" description="Írd be az állomás nevét, ékezetek nélkül is megy">
       <ScreenSection>
         <label htmlFor="q" className="sr-only">
           Állomás neve

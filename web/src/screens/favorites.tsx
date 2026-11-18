@@ -11,7 +11,7 @@ const favHref = (f: Favorite) => (f.type === "station" ? href.board(f.id) : href
 export function FavoritesScreen() {
   const favorites = useFavorites()
   return (
-    <Screen title="Kedvencek" description="A kedvencek csak ezen az eszközön tárolódnak.">
+    <Screen title="Kedvencek" description="Csak ezen az eszközön tárolódnak">
       {favorites.length === 0 ? (
         <ScreenSection>
           <p className="text-sm">

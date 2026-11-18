@@ -147,7 +147,7 @@ export function RouteFormScreen() {
   }
 
   return (
-    <Screen title="Útvonal" description="Közvetlen vonatok két állomás között.">
+    <Screen title="Útvonal" description="Közvetlen vonatok két állomás között">
       <ScreenSection>
         <form onSubmit={submit} className="flex flex-col gap-4">
           {/* Honnan [⇄] Hová */}

@@ -93,7 +93,7 @@ function TrainState({ trip }: { trip: Trip }) {
   if (trip.cancelled) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>A vonat ezen a napon nem közlekedik (törölve).</AlertTitle>
+        <AlertTitle>A vonat ezen a napon nem közlekedik (törölve)</AlertTitle>
         {trip.reason && <AlertDescription>Ok: {trip.reason}</AlertDescription>}
       </Alert>
     )
@@ -101,7 +101,7 @@ function TrainState({ trip }: { trip: Trip }) {
   if (!trip.runsOnDate) {
     return (
       <Alert>
-        <AlertTitle>A vonat ezen a napon nem közlekedik.</AlertTitle>
+        <AlertTitle>A vonat ezen a napon nem közlekedik</AlertTitle>
       </Alert>
     )
   }

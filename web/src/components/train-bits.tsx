@@ -11,7 +11,10 @@ import { useMnrFont } from "@/hooks/use-mnr-font"
 import { mnrGlyph } from "@/lib/mnr"
 import type { LiveInfo, TimeInfo } from "@/lib/types"
 
-/** Delay as red text ('+12 perc', 'törölve'), neutral for 'időben' / 'nincs adat'. */
+/**
+ * Delay as red text ('+12 perc', 'törölve'), neutral for 'időben'. Nothing without live data:
+ * the screen's live status line already says so, a label on every row would only add noise.
+ */
 export function DelayText({
   time,
   cancelled,
@@ -22,6 +25,7 @@ export function DelayText({
   className?: string
 }) {
   const s = delayStatus(time, cancelled)
+  if (s.kind === "unknown") return null
   return (
     <span
       className={cn(
@@ -182,10 +186,10 @@ export function TimeBlock({
   const planned = timeParts(time.planned)
   return (
     <div className={cn("flex w-12 shrink-0 flex-col leading-tight tabular-nums", className)}>
-      <span className={cn("text-[15px] font-semibold", cancelled && "text-muted-foreground line-through")}>
+      <span className={cn("text-base font-semibold", cancelled && "text-muted-foreground line-through")}>
         {planned.time}
       </span>
-      {planned.day && <span className="text-[11px] text-muted-foreground">{planned.day}</span>}
+      {planned.day && <span className="text-xs text-muted-foreground">{planned.day}</span>}
       <ExpectedTime time={time} cancelled={cancelled} showLive={showLive} />
     </div>
   )

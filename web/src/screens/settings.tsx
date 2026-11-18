@@ -10,7 +10,7 @@ import { START_PAGES, updateSettings, useSettings, type StartPage } from "@/lib/
 export function SettingsScreen() {
   const settings = useSettings()
   return (
-    <Screen title="Beállítások" description="Ezen az eszközön tárolódnak, a telepített alkalmazásban is megmaradnak.">
+    <Screen title="Beállítások" description="Ezen az eszközön tárolódnak, a telepített alkalmazásban is megmaradnak">
       <Separator />
       <ScreenSection className="pt-4">
         <div className="flex flex-col gap-1">
