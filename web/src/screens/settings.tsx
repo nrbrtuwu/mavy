@@ -70,6 +70,22 @@ export function SettingsScreen() {
           />
         </Label>
       </ScreenSection>
+      <Separator />
+      <ScreenSection className="pt-4">
+        <Label htmlFor="full-screen" className="flex min-h-12 cursor-pointer items-center justify-between gap-4">
+          <span className="flex flex-col gap-1">
+            <span className="font-medium">Teljes képernyő</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              A középső doboz kitölti a képernyőt a menüsor alatt, telefonon és gépen is.
+            </span>
+          </span>
+          <Switch
+            id="full-screen"
+            checked={settings.fullScreen}
+            onCheckedChange={(checked) => updateSettings({ fullScreen: checked })}
+          />
+        </Label>
+      </ScreenSection>
     </Screen>
   )
 }

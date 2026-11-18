@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <!-- The navbar's colour (shadcn --card): iOS uses it for the status bar strip. -->
+    <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
     <title>Mávy</title>
     <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -13,9 +14,33 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Mávy" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!--
+      iPhone home-screen app: "default" (not black-translucent), so iOS draws a solid status bar
+      in the theme colour instead of blurring the page under it. See AppShell's header.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      First paint in the right colours (before the stylesheet and React): dark mode, and with
+      Settings > Teljes képernyő the box's grey behind everything. AppShell takes over afterwards.
+    -->
+    <script>
+      ;(function () {
+        var dark = matchMedia("(prefers-color-scheme: dark)").matches
+        var full = false
+        try {
+          full = JSON.parse(localStorage.getItem("mavy.settings.v1") || "{}").fullScreen === true
+        } catch (e) {}
+        var bg = dark ? (full ? "#171717" : "#0a0a0a") : "#ffffff"
+        var root = document.documentElement
+        root.classList.toggle("dark", dark)
+        root.classList.toggle("full-screen", full)
+        root.style.backgroundColor = bg // first paint, before the stylesheet; AppShell clears it
+      })()
+    </script>
   </head>
   <body>
+    <!-- iPhone home-screen app: solid strip at the top edge against iOS's status bar blur (index.css). -->
+    <div class="ios-top-strip" aria-hidden="true"></div>
     <div id="root"></div>
     <noscript>A Mávy működéséhez JavaScript szükséges.</noscript>
     <script type="module" src="/src/main.tsx"></script>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react"
+import { cn } from "cn"
 import { ArrowLeftRight, Search, X } from "lucide-react"
 
 import { Screen, ScreenSection } from "@/components/layout"
@@ -10,6 +11,7 @@ import { useKeptState } from "@/hooks/use-kept-state"
 import { useRecordStationPick } from "@/lib/frequent-stations"
 import { readLastRoute, writeLastRoute } from "@/lib/last-route"
 import { href } from "@/lib/router"
+import { useSettings } from "@/lib/settings"
 import type { Station } from "@/lib/types"
 
 type Side = "from" | "to"
@@ -88,6 +90,8 @@ export function RouteFormScreen() {
   const [active, setActive] = useKeptState<Side>("route-form:active", "from")
   const [time, setTime] = useKeptState("route-form:time", "")
   const [message, setMessage] = useState<string | null>(null)
+  // Full screen on phones: the form fills the box and Keresés sits at its bottom edge.
+  const { fullScreen } = useSettings()
   const fromInput = useRef<HTMLInputElement>(null)
   const toInput = useRef<HTMLInputElement>(null)
 
@@ -157,8 +161,8 @@ export function RouteFormScreen() {
 
   return (
     <Screen title="Útvonal" description="Közvetlen vonatok két állomás között">
-      <ScreenSection>
-        <form onSubmit={submit} className="flex flex-col gap-4">
+      <ScreenSection className={cn(fullScreen && "max-sm:min-h-full")}>
+        <form onSubmit={submit} className={cn("flex flex-col gap-4", fullScreen && "max-sm:flex-1")}>
           {/* Honnan [⇄] Hová */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2">
             <StationSlot
@@ -231,7 +235,7 @@ export function RouteFormScreen() {
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           )}
-          <Button type="submit" size="lg" className="h-11">
+          <Button type="submit" size="lg" className={cn("h-11", fullScreen && "max-sm:mt-auto")}>
             <Search aria-hidden />
             Keresés
           </Button>

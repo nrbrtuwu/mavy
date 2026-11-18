@@ -10,7 +10,7 @@ Users: the owner and a few close friends. Not a public product.
 - Train detail: every stop with planned time, expected time, delay
 - Saved favorites (routes and stations), stored on the device
 - Station search: the device's 5 most picked stations shown when the field is empty (each with an X to remove it) and ranked first (`web/src/lib/frequent-stations.ts`); "Hová" only offers stations a direct train reaches from "Honnan"
-- Settings page (last navbar item): start page (default route search), animated background on/off, frequent stations on/off (default on). Stored on the device
+- Settings page (last navbar item): start page (default route search), animated background on/off, frequent stations on/off (default on), full screen on/off (default off: the screen's box fills the space under the navbar, edge to edge, on phones and desktop). Stored on the device
 - Installable PWA, works on phones, shows last cached data when offline
 
 ## Non-goals

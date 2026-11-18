@@ -11,7 +11,7 @@ import { useEdgeSwipeBack } from "@/hooks/use-edge-swipe-back"
 import { href, navigateBack } from "@/lib/router"
 import { useSettings } from "@/lib/settings"
 
-export type Section = "favorites" | "station" | "route" | "settings" | null
+export type Section ="favorites" | "station" | "route" | "settings" | null
 
 const NAV = [
   { section: "route", label: "Útvonal", href: href.routeForm(), icon: RouteIcon },
@@ -30,10 +30,16 @@ export function AppShell({
   backHref: string | null
   children: ReactNode
 }) {
-  const { animatedBackground } = useSettings()
+  const { animatedBackground, fullScreen } = useSettings()
 
   // Edge swipe in the iPhone home-screen app: the previous page (any screen), or the parent.
   useEdgeSwipeBack(() => navigateBack(backHref))
+
+  // Full screen: the page behind the box is the box's grey too (index.css, html.full-screen).
+  useEffect(() => {
+    document.documentElement.classList.toggle("full-screen", fullScreen)
+    document.documentElement.style.backgroundColor = "" // index.html's first-paint colour; CSS from here on
+  }, [fullScreen])
 
   // The page itself must stay at the top (only #app-scroll scrolls). Fingers cannot scroll
   // it (overflow: hidden), but iOS may nudge it, e.g. when the keyboard opens: snap back.
@@ -51,8 +57,8 @@ export function AppShell({
 
   return (
     <>
-      {/* Off in settings: not mounted at all, so no WebGL work. The page background shows. */}
-      {animatedBackground && <AnimatedBackground />}
+      {/* Off in settings, or hidden behind the full-screen box: not mounted, so no WebGL work. */}
+      {animatedBackground && !fullScreen && <AnimatedBackground />}
       {/*
         The page itself does not scroll (see index.css). This column fills the visible screen
         (h-dvh): navbar, then the screen's box (fixed height, scrolls inside, see Screen).
@@ -61,10 +67,20 @@ export function AppShell({
       */}
       <div
         id={APP_SCROLL_ID}
-        className="absolute inset-x-0 top-0 isolate flex h-dvh flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]"
+        className={cn(
+          "absolute inset-x-0 top-0 isolate flex h-dvh flex-col overflow-hidden",
+          // Full screen: the box reaches the bottom edge and pads the home-indicator area itself.
+          !fullScreen && "pb-[env(safe-area-inset-bottom)]",
+        )}
       >
-      <header className="shrink-0 border-b bg-background/75 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4">
+      {/*
+        Solid navbar in the box's grey (--card), reaching under the status bar. iPhone home-screen
+        apps (iOS 26.1+) paint the status bar strip themselves and blur/fade it over anything
+        see-through; with a solid header, status-bar-style "default" and theme-color / manifest
+        theme_color set to this same colour (index.html, manifest), the strip is one solid grey.
+      */}
+      <header className="ios-top-pad relative z-10 shrink-0 border-b bg-card pt-[env(safe-area-inset-top)]">
+        <div className={cn("mx-auto flex h-14 items-center gap-2 px-4", !fullScreen && "max-w-2xl")}>
           <a href={href.start()} className="mr-auto flex items-center gap-2 font-semibold">
             <AppLogo />
             Mávy
@@ -93,8 +109,18 @@ export function AppShell({
           </nav>
         </div>
       </header>
-      {/* The screen's box is as tall as its content (at most the free space) and centred. */}
-      <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col justify-center gap-4 p-4">
+      {/*
+        The screen's box is as tall as its content (at most the free space) and centred.
+        Full screen (setting): it fills all the space under the navbar, edge to edge.
+      */}
+      <main
+        className={cn(
+          "mx-auto flex min-h-0 w-full flex-1 flex-col",
+          fullScreen
+            ? "*:flex-1 *:rounded-none *:pb-[env(safe-area-inset-bottom)] *:ring-0"
+            : "max-w-2xl justify-center gap-4 p-4",
+        )}
+      >
         {/* Screen shows the Back button in its box's top right corner. */}
         <BackContext.Provider value={backHref}>{children}</BackContext.Provider>
       </main>

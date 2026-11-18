@@ -153,3 +153,36 @@ body {
 body {
   position: relative;
 }
+/* Full screen (setting): the page behind the status bar is the box's grey too (see AppShell). */
+html.full-screen,
+html.full-screen body {
+  background-color: var(--card);
+}
+
+/*
+ * iPhone home-screen app (iOS 26.1+ / 27): iOS blurs and fades the status bar area over the page,
+ * even with a solid header and status-bar-style "default". A thin solid strip fixed to the very
+ * top edge makes iOS draw that area solid (workaround from tips.ojapp.app, "iOS 27 PWA top blur
+ * workaround", method 2; observed behaviour, not documented by Apple). Same colour as the navbar,
+ * not tappable, only in the installed app.
+ */
+.ios-top-strip {
+  display: none;
+}
+@media (display-mode: standalone) {
+  .ios-top-strip {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 11px;
+    background-color: var(--card);
+    pointer-events: none;
+    z-index: 2147483647;
+  }
+  /* The navbar starts below the strip, so the strip never covers its buttons. */
+  .ios-top-pad {
+    padding-top: calc(env(safe-area-inset-top) + 11px);
+  }
+}
