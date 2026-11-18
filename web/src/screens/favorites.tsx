@@ -2,6 +2,7 @@ import { ChevronRight, MapPin, Route as RouteIcon, Search, Trash2 } from "lucide
 
 import { Screen, ScreenList, ScreenSection } from "@/components/layout"
 import { Button } from "@/components/ui/button"
+import { RouteName } from "@/components/route-arrow"
 import { favId, favLabel, toggleFavorite, useFavorites, type Favorite } from "@/lib/favorites"
 import { href } from "@/lib/router"
 
@@ -39,7 +40,9 @@ export function FavoritesScreen() {
               <li key={favId(f)} className="flex items-center gap-1 pr-2">
                 <a href={favHref(f)} className="flex min-h-12 flex-1 items-center gap-3 px-4 py-3 hover:bg-muted/50">
                   <Icon className="size-4 text-muted-foreground" aria-hidden />
-                  <span className="flex-1 font-medium">{favLabel(f)}</span>
+                  <span className="flex-1 font-medium">
+                    {f.type === "station" ? f.name : <RouteName from={f.from.name} to={f.to.name} />}
+                  </span>
                   <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
                 </a>
                 <Button

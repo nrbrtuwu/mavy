@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react"
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
+import { RouteName } from "@/components/route-arrow"
 import { Screen, ScreenList, ScreenSection, ScreenSkeleton } from "@/components/layout"
 import { DelayReason, DelayText, LiveStatus, TimeBlock, TrainBadge } from "@/components/train-bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -56,7 +57,7 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
   const showLive = data.live.state !== "none"
   return (
     <Screen
-        title={`${data.from.name} → ${data.to.name}`}
+        title={<RouteName from={data.from.name} to={data.to.name} />}
         description={time ? `Indulás ${time} után` : "Következő közvetlen vonatok"}
         actions={
           <>

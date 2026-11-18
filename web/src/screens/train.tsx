@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react"
 import { cn } from "cn"
 
+import { RouteArrow } from "@/components/route-arrow"
 import { Screen, ScreenSection, ScreenSkeleton } from "@/components/layout"
 import { DelayReason, DelayText, ExpectedTime, LiveStatus, TrainBadge } from "@/components/train-bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -37,7 +38,15 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
   const showLive = t.live.state !== "none"
   return (
     <Screen
-      title={t.headsign ? `→ ${t.headsign}` : (t.label ?? "Vonat")}
+      title={
+        t.headsign ? (
+          <>
+            <RouteArrow /> {t.headsign}
+          </>
+        ) : (
+          (t.label ?? "Vonat")
+        )
+      }
       description={
         <span className="flex flex-wrap items-center gap-2">
           <TrainBadge label={t.label} />
