@@ -41,6 +41,11 @@ function write(list: Favorite[]) {
   window.dispatchEvent(new Event(EVENT))
 }
 
+/** The saved favourites right now (outside React). */
+export function readFavorites(): Favorite[] {
+  return read()
+}
+
 export function toggleFavorite(f: Favorite): void {
   const list = [...read()]
   const i = list.findIndex((x) => favId(x) === favId(f))

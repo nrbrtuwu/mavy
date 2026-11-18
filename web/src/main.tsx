@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client"
 import "./index.css"
 import { App } from "./App"
 import { interceptAppLinks, trackHistoryDepth } from "./lib/router"
+import { prefetchFavorites } from "./lib/prefetch-favorites"
 import { loadStationList } from "./lib/stations"
 
 // Lets the Back button and swipe know whether the previous page belongs to the app.
@@ -13,6 +14,9 @@ interceptAppLinks()
 
 // Station names for instant search, fetched once at start-up (in the background).
 void loadStationList()
+
+// Favourites (up to 5) load in the background, so opening one is instant.
+prefetchFavorites()
 
 // Light / dark mode follows the device setting (shadcn uses the .dark class).
 const dark = window.matchMedia("(prefers-color-scheme: dark)")

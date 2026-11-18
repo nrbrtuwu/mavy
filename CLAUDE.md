@@ -44,6 +44,7 @@ Users: the owner and a few close friends. Not a public product.
 - Only the server calls the live API. Browsers never call MÁV directly.
 - Cache every live response for 30 to 60 seconds. One upstream request serves all users.
 - Fetch only what a user is looking at right now (one station, one train). Never scrape the whole country.
+  - Owner's exception: at app start the first 5 favourites are preloaded with live data, one request after another, once per start (`web/src/lib/prefetch-favorites.ts`).
 - Send a normal browser User-Agent, no request bursts, back off on errors (exponential, max 5 min).
 - If the live API fails, still show planned times with a clear "no live data" label.
 

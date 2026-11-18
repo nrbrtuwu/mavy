@@ -6,7 +6,7 @@
 // data instantly (no loading placeholder) and refreshes it quietly in the background.
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { errorMessage, type Offline } from "@/lib/api"
+import { errorMessage, type Offline } from "../lib/api"
 
 const REFRESH_MS = 60_000
 /** Coming back to a screen within this time: show the kept data without refetching. */
@@ -51,6 +51,23 @@ function fromKept<T>(key: string): LiveData<T> & { key: string } {
     dataTime: k?.dataTime ?? null,
     savedAt: k?.savedAt ?? null,
     refreshError: null,
+  }
+}
+
+/**
+ * Load data for a screen that is not open yet (favourites preload) into the same cache,
+ * so the screen shows it at once. Skipped when fresh data is already kept. Never throws.
+ */
+export async function prefetchLiveData(key: string, load: () => Promise<unknown>): Promise<void> {
+  const k = kept.get(key)
+  if (k && Date.now() - k.loadedAt < FRESH_MS) return
+  try {
+    const data = (await load()) as Offline
+    if (data?._savedAt) return // offline copy: the screen would get the same from the service worker
+    const now = Date.now()
+    keep(key, { data, dataTime: now, savedAt: null, loadedAt: now })
+  } catch {
+    // the screen loads it normally when opened
   }
 }
 

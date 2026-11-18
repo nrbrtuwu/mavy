@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useMemo } from "react"
 import { ChevronRight } from "lucide-react"
 import { cn } from "cn"
 
@@ -7,18 +7,14 @@ import { Screen, ScreenList, ScreenSection, ScreenSkeleton } from "@/components/
 import { DelayReason, DelayText, LiveStatus, TimeBlock, TrainBadge } from "@/components/train-bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useLiveData } from "@/hooks/use-live-data"
-import { api } from "@/lib/api"
+import { boardRequest } from "@/lib/screen-requests"
 import { platformText } from "@/lib/format"
 import { href } from "@/lib/router"
-import type { BoardResponse, Departure } from "@/lib/types"
+import type { Departure } from "@/lib/types"
 
 export function BoardScreen({ stationId }: { stationId: string }) {
-  const load = useCallback(
-    (signal: AbortSignal) =>
-      api<BoardResponse>(`/api/departures?station=${encodeURIComponent(stationId)}&limit=30`, signal),
-    [stationId],
-  )
-  const live = useLiveData(`board:${stationId}`, load)
+  const req = useMemo(() => boardRequest(stationId), [stationId])
+  const live = useLiveData(req.key, req.load)
   const { error, dataTime, savedAt, refreshError } = live
   const data = live.data
 

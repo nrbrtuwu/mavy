@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
@@ -9,22 +9,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { setKept } from "@/hooks/use-kept-state"
 import { useLiveData } from "@/hooks/use-live-data"
-import { api } from "@/lib/api"
+import { routeRequest } from "@/lib/screen-requests"
 import { writeLastRoute } from "@/lib/last-route"
 import { durationText, platformText } from "@/lib/format"
 import { href } from "@/lib/router"
-import type { Connection, RouteResponse } from "@/lib/types"
+import type { Connection } from "@/lib/types"
 
 export function RouteResultsScreen({ from, to, time }: { from: string; to: string; time: string | null }) {
-  const load = useCallback(
-    (signal: AbortSignal) => {
-      const q = new URLSearchParams({ from, to, limit: "15" })
-      if (time) q.set("time", time)
-      return api<RouteResponse>(`/api/route?${q}`, signal)
-    },
-    [from, to, time],
-  )
-  const live = useLiveData(`route:${from}:${to}:${time}`, load)
+  const req = useMemo(() => routeRequest(from, to, time), [from, to, time])
+  const live = useLiveData(req.key, req.load)
   const { error, dataTime, savedAt, refreshError } = live
   const data = live.data
 
