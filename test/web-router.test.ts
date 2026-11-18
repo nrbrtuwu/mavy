@@ -37,7 +37,7 @@ describe('start page', () => {
   });
 
   test('stored settings: valid values kept, anything else falls back to the default', () => {
-    const on = { animatedBackground: true };
+    const on = { animatedBackground: true, frequentStations: true };
     expect(parseSettings('{"startPage":"favorites"}')).toEqual({ startPage: 'favorites', ...on });
     expect(parseSettings('{"startPage":"station"}')).toEqual({ startPage: 'station', ...on });
     expect(parseSettings(null)).toEqual({ startPage: 'route', ...on });
@@ -50,12 +50,21 @@ describe('start page', () => {
 describe('animated background setting', () => {
   test('on by default, can be turned off, junk means on', () => {
     expect(DEFAULT_SETTINGS.animatedBackground).toBe(true);
-    expect(parseSettings('{"animatedBackground":false}')).toEqual({ startPage: 'route', animatedBackground: false });
+    expect(parseSettings('{"animatedBackground":false}')).toEqual({ startPage: 'route', animatedBackground: false, frequentStations: true });
     expect(parseSettings('{"startPage":"station","animatedBackground":false}')).toEqual({
       startPage: 'station',
       animatedBackground: false,
+      frequentStations: true,
     });
     expect(parseSettings('{"animatedBackground":"no"}').animatedBackground).toBe(true);
+  });
+});
+
+describe('frequent stations setting', () => {
+  test('on by default, can be turned off, junk means on', () => {
+    expect(DEFAULT_SETTINGS.frequentStations).toBe(true);
+    expect(parseSettings('{"frequentStations":false}').frequentStations).toBe(false);
+    expect(parseSettings('{"frequentStations":0}').frequentStations).toBe(true);
   });
 });
 

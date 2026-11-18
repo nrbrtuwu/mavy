@@ -54,6 +54,22 @@ export function SettingsScreen() {
           />
         </Label>
       </ScreenSection>
+      <Separator />
+      <ScreenSection className="pt-4">
+        <Label htmlFor="frequent-stations" className="flex min-h-12 cursor-pointer items-center justify-between gap-4">
+          <span className="flex flex-col gap-1">
+            <span className="font-medium">Gyakran keresett állomások</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              A keresésben az 5 leggyakrabban választott állomás elöl. Kikapcsolva nem számolja és nem mutatja őket.
+            </span>
+          </span>
+          <Switch
+            id="frequent-stations"
+            checked={settings.frequentStations}
+            onCheckedChange={(checked) => updateSettings({ frequentStations: checked })}
+          />
+        </Label>
+      </ScreenSection>
     </Screen>
   )
 }

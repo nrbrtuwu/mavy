@@ -3,6 +3,7 @@
 // and rank first among the results while typing.
 
 import { useSyncExternalStore } from "react"
+import { useSettings } from "./settings"
 import type { Station } from "./types"
 
 interface Entry {
@@ -47,6 +48,14 @@ export function addPick(counts: Counts, s: Station, now: number): Counts {
   return Object.fromEntries(entries.sort(byUse).slice(0, MAX_ENTRIES))
 }
 
+/** The station taken off the list (its count is dropped too, so it starts again from 0). */
+export function removeStation(counts: Counts, id: string): Counts {
+  if (!(id in counts)) return counts
+  const next = { ...counts }
+  delete next[id]
+  return next
+}
+
 /** Most picked first (ties: most recent first). */
 export function topStations(counts: Counts, limit = TOP): Station[] {
   return Object.entries(counts)
@@ -81,15 +90,26 @@ function read(): Counts {
   return cache
 }
 
-/** Count a station picked from a search. */
-export function recordStationPick(s: Station): void {
+function write(counts: Counts) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(addPick(read(), s, Date.now())))
+    localStorage.setItem(KEY, JSON.stringify(counts))
   } catch {
-    // storage full or blocked: not counted
+    // storage full or blocked: not saved
   }
   window.dispatchEvent(new Event(EVENT))
 }
+
+/** Count a station picked from a search (nothing when turned off in Settings). */
+export function recordStationPick(s: Station, enabled: boolean): void {
+  if (enabled) write(addPick(read(), s, Date.now()))
+}
+
+/** The X on a "Gyakran keresett" row. */
+export function forgetStation(id: string): void {
+  write(removeStation(read(), id))
+}
+
+const NONE: Station[] = []
 
 function subscribe(onChange: () => void) {
   window.addEventListener(EVENT, onChange)
@@ -103,9 +123,10 @@ function subscribe(onChange: () => void) {
 let topCounts: Counts | null = null
 let topCache: Station[] = []
 
-/** The top 5 stations of this device, updated live. */
+/** The top 5 stations of this device, updated live; none when turned off in Settings. */
 export function useTopStations(): Station[] {
-  return useSyncExternalStore(subscribe, () => {
+  const { frequentStations } = useSettings()
+  const top = useSyncExternalStore(subscribe, () => {
     const counts = read()
     if (counts !== topCounts) {
       topCounts = counts
@@ -113,4 +134,11 @@ export function useTopStations(): Station[] {
     }
     return topCache
   })
+  return frequentStations ? top : NONE
+}
+
+/** Counts a picked station, if the setting is on. */
+export function useRecordStationPick(): (s: Station) => void {
+  const { frequentStations } = useSettings()
+  return (s) => recordStationPick(s, frequentStations)
 }

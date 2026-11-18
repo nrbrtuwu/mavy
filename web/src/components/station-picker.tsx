@@ -1,11 +1,12 @@
 // Station search input with a result list. Used on the station search and route form screens.
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { History, MapPin, Search } from "lucide-react"
+import { History, MapPin, Search, X } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { api, errorMessage } from "@/lib/api"
-import { frequentFirst, useTopStations } from "@/lib/frequent-stations"
+import { Button } from "@/components/ui/button"
+import { forgetStation, frequentFirst, useTopStations } from "@/lib/frequent-stations"
 import {
   loadReachable,
   loadStationList,
@@ -188,9 +189,10 @@ function StationList({
             <span>{s.name}</span>
           </>
         )
-        const cls = "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-muted active:bg-muted"
+        const cls =
+          "flex min-h-11 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left text-sm hover:bg-muted active:bg-muted"
         return (
-          <li key={s.id}>
+          <li key={s.id} className="flex items-center">
             {hrefFor ? (
               <a href={hrefFor(s)} className={cls} onClick={() => onPick?.(s)}>
                 {content}
@@ -199,6 +201,20 @@ function StationList({
               <button type="button" className={cls} onClick={() => onPick?.(s)}>
                 {content}
               </button>
+            )}
+            {/* Frequent rows: X takes the station off the list (a sibling, never inside the link). */}
+            {frequent && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0 rounded-none text-muted-foreground"
+                aria-label={`${s.name} eltávolítása a gyakran keresettek közül`}
+                title="Eltávolítás"
+                onClick={() => forgetStation(s.id)}
+              >
+                <X aria-hidden />
+              </Button>
             )}
           </li>
         )

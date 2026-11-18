@@ -10,9 +10,11 @@ export interface Settings {
   startPage: StartPage
   /** Animated shader background on or off. */
   animatedBackground: boolean
+  /** Count picked stations and offer the top 5 in searches ("Gyakran keresett"). */
+  frequentStations: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { startPage: "route", animatedBackground: true }
+export const DEFAULT_SETTINGS: Settings = { startPage: "route", animatedBackground: true, frequentStations: true }
 
 export const START_PAGES: { value: StartPage; label: string; description: string }[] = [
   { value: "route", label: "Útvonal", description: "Keresés két állomás között" },
@@ -29,12 +31,15 @@ export function parseSettings(raw: string | null): Settings {
     const value = JSON.parse(raw ?? "{}") as {
       startPage?: unknown
       animatedBackground?: unknown
+      frequentStations?: unknown
     } | null
     const start = value?.startPage
     const background = value?.animatedBackground
+    const frequent = value?.frequentStations
     return {
       startPage: START_PAGES.some((p) => p.value === start) ? (start as StartPage) : DEFAULT_SETTINGS.startPage,
       animatedBackground: typeof background === "boolean" ? background : DEFAULT_SETTINGS.animatedBackground,
+      frequentStations: typeof frequent === "boolean" ? frequent : DEFAULT_SETTINGS.frequentStations,
     }
   } catch {
     return DEFAULT_SETTINGS

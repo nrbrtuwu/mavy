@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useKeptState } from "@/hooks/use-kept-state"
-import { recordStationPick } from "@/lib/frequent-stations"
+import { useRecordStationPick } from "@/lib/frequent-stations"
 import { readLastRoute, writeLastRoute } from "@/lib/last-route"
 import { href } from "@/lib/router"
 import type { Station } from "@/lib/types"
@@ -103,6 +103,7 @@ export function RouteFormScreen() {
   const only = active === "to" ? reachable.set : null
   const unfiltered = active === "to" && !!from && reachable.failed
   const search = useStationSearch(activeQuery, only)
+  const recordStationPick = useRecordStationPick()
 
   /** Focus a slot's input once it is rendered (it may just have replaced the picked chip). */
   const focusSlot = (side: Side) =>

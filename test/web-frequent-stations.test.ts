@@ -1,6 +1,6 @@
 // Most picked stations (route form and station search), stored on the device.
 import { describe, expect, test } from 'bun:test';
-import { addPick, frequentFirst, parseCounts, topStations } from '../web/src/lib/frequent-stations.ts';
+import { addPick, frequentFirst, parseCounts, removeStation, topStations } from '../web/src/lib/frequent-stations.ts';
 
 const A = { id: 'A', name: 'Alsógalla' };
 const B = { id: 'B', name: 'Budapest-Déli' };
@@ -22,6 +22,14 @@ describe('frequent stations', () => {
     expect(Object.keys(c)).toHaveLength(50);
     expect(topStations(c)).toHaveLength(5);
     expect(topStations(c)[0]!.id).toBe('S59');
+  });
+
+  test('an X-ed station leaves the list and starts again from 0', () => {
+    let c = addPick(addPick(addPick({}, A, 1), A, 2), B, 3);
+    c = removeStation(c, 'A');
+    expect(topStations(c)).toEqual([B]);
+    expect(addPick(c, A, 4).A!.count).toBe(1);
+    expect(removeStation(c, 'nope')).toBe(c);
   });
 
   test('a renamed station keeps its count with the new name', () => {
