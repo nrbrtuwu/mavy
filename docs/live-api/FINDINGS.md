@@ -72,3 +72,36 @@ planned and actual data in standard GTFS / GTFS-RT formats, based on EU requirem
 - `serviceDate` is `YYYY-MM-DD`. Scheduled and realtime times are seconds after service-day start (GTFS style).
   Delays (`arrivalDelay`, `departureDelay`) are in seconds.
 - Agencies include MÁV, MÁV HÉV, Volánbusz (`hkir:`), BKK (`BKK:`) and other city operators.
+
+## Update 2026-11-18: vonatinfo.mav.hu works (now the live source)
+
+MÁV's public train map. One JSON endpoint, no login, cookie, token or captcha:
+`POST https://vonatinfo.mav.hu/map.aspx/getData`, body `{ "a": <action>, "jo": { ... } }`, answer
+`{ "d": { "result": ... } }` (gzip). Sent with a normal browser User-Agent and `Referer: https://vonatinfo.mav.hu/`.
+
+| Action | `jo` | Answer | Used |
+|---|---|---|---|
+| `TRAINS` | `{ history: false, id: false }` | every GPS-tracked train in the country (~300 at 10:00): `@TrainNumber` (`55` + number), `@Delay` (min), `@Relation`, `@Lat`/`@Lon`, `@ElviraID` (`9339646_261118`, suffix = YYMMDD), sometimes `@Line`. No reasons, no stops | no (whole country) |
+| `TRAIN` | `{ vsz: "55141" }` or `{ v: <ElviraID> }` | `{ html, line }`: stop table with km, planned arr/dep, actual (red) or predicted (red italic) times, platform, "A pillanatnyi késés N perc", delay reason on red background | yes |
+| `STATION` | `{ a: "Budapest-Keleti", d: "26.11.18" }` | HTML string: today's board, arrivals and departures, planned + red actual/predicted time, platform, train number + ElviraID, destination; a hidden row per train with the current delay and reason | yes |
+
+Findings:
+- `TRAIN` by number ignores a date parameter and always answers with today's run, so a train still
+  running after midnight from yesterday gets no live detail (planned times only).
+- Rows the train has passed have class `row_past_*`. Foreign stops have no km, no live times.
+- Red-background notices are either delay reasons ("Pálya állapota miatti késés", "Más vonat által okozott
+  késés", "Társvasúttól átvett késés", "Biztosítóberendezési hiba miatti késés") or service notes
+  ("Kisebb ülőhely-kapacitású szerelvénnyel közlekedik."). Only the ones about delays or cancellation are kept.
+- Two delay numbers, used for different things (owner's choice): "+N perc" shows the train's delay right now
+  ("A pillanatnyi késés N perc"; on boards `currentDelayMin`), while the time under the planned time is the station's
+  own predicted time, which is more accurate (e.g. EC 141: +23 now, but predicted to reach Keleti 15 min late).
+- Route results load two boards (departure and arrival station, both cached). The arrival time is the arrival
+  station's own prediction for the same train (live number + date + planned arrival). Boards only predict trains
+  that are close (Győr's board had no time for S10 4926 an hour out, its train page said on time), so for
+  connections still without one the server asks the train page (TRAIN, at most 3 per search, cached). Only
+  without any prediction is the departure delay carried over.
+- A train gets a red time at a station only once it is running; trains that start later show planned times only.
+- Cancelled-train markup has not been seen yet; `cancelled` stays false until it is captured.
+- MÁV's GTFS has no train number for S/Z/IR trips (`trip_short_name` empty). Those are matched to the live
+  board by planned departure time + destination, only when exactly one live row fits (`src/merge.ts`).
+- Samples: `test/fixtures/vonatinfo/` (captured 2026-11-18 ~10:10).

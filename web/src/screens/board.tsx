@@ -93,7 +93,7 @@ function DepartureRow({ d, showLive }: { d: Departure; showLive: boolean }) {
         <DelayReason reason={d.reason} />
       </div>
       <div className="flex items-center gap-1 text-sm">
-        {(showLive || d.cancelled) && <DelayText time={d.departure} cancelled={d.cancelled} />}
+        {(showLive || d.cancelled) && <DelayText time={{ ...d.departure, delayMin: d.currentDelayMin ?? d.departure.delayMin }} cancelled={d.cancelled} />}
         <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
       </div>
     </li>

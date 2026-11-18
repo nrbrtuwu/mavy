@@ -3,6 +3,7 @@ import type { PlannedConnection, PlannedDeparture, PlannedTrip } from '../src/gt
 import type { LiveBoard, LiveDeparture, LiveResult, LiveSource, LiveStop, LiveTrain } from '../src/live/types.ts';
 import {
   isLiveRelevant,
+  liveTrainNumber,
   mergeConnections,
   mergeDepartures,
   mergeTrip,
@@ -72,6 +73,34 @@ describe('helpers', () => {
     expect(isLiveRelevant('20261111', NOW)).toBe(true);
     expect(isLiveRelevant('20261110', NOW)).toBe(false);
     expect(isLiveRelevant('20261113', NOW)).toBe(false);
+  });
+});
+
+describe('trains without a number (S/Z/IR lines)', () => {
+  const unnumbered = (dep: string, headsign: string) =>
+    ({ ...planned('S1', '', dep, { headsign, label: 'S60' }), trainNumber: null }) as PlannedDeparture;
+
+  test('match by planned time and destination', () => {
+    const res = mergeDepartures(
+      [unnumbered(T('08:30'), 'Szolnok')],
+      board([liveDep('3162', { destination: 'Szolnok', delayMin: 4 })]),
+      { now: NOW, limit: 5 },
+    );
+    expect(res.departures[0]).toMatchObject({ live: 'live', departure: { delayMin: 4 } });
+  });
+
+  test('no match when another destination or two trains fit', () => {
+    const other = mergeDepartures([unnumbered(T('08:30'), 'Gödöllő')], board([liveDep('3162', { destination: 'Szolnok' })]), {
+      now: NOW,
+      limit: 5,
+    });
+    expect(other.departures[0]!.live).toBe('none');
+    const twin = mergeDepartures(
+      [unnumbered(T('08:30'), 'Szolnok')],
+      board([liveDep('3162', { destination: 'Szolnok' }), liveDep('3164', { destination: 'Szolnok' })]),
+      { now: NOW, limit: 5 },
+    );
+    expect(twin.departures[0]!.live).toBe('none');
   });
 });
 
@@ -183,6 +212,97 @@ describe('mergeConnections', () => {
       live: 'live',
     });
   });
+
+  test('arrival uses the arrival station prediction when it has one', () => {
+    // S10 Vértesszőlős -> Győr: left 19 min late, vonatinfo predicts Győr 11:32 instead of 11:19.
+    const conn: PlannedConnection = {
+      tripId: 'S10',
+      serviceDate: '20261112',
+      trainNumber: null,
+      label: 'S10',
+      headsign: 'Győr',
+      departure: T('08:30'),
+      arrival: T('11:19'),
+      durationMin: 169,
+      fromPlatform: null,
+      toPlatform: null,
+    };
+    const dep = board([liveDep('9402', { destination: 'Győr', expectedDeparture: T('08:49') })]);
+    const arr: LiveResult<LiveBoard | null> = {
+      data: {
+        stationCode: null,
+        stationName: 'Győr',
+        departures: [],
+        arrivals: [
+          { trainNumber: '9402', serviceDate: '20261112', plannedArrival: T('11:19'), expectedArrival: T('11:32'), platform: '4' },
+          { trainNumber: '9404', serviceDate: '20261112', plannedArrival: T('11:19'), expectedArrival: T('11:50'), platform: '5' },
+        ],
+      },
+      fetchedAt: FETCHED,
+      stale: false,
+    };
+    const res = mergeConnections([conn], dep, { from: NOW, limit: 5 }, arr);
+    expect(res.connections[0]).toMatchObject({
+      departure: { expected: T('08:49'), delayMin: 19 },
+      arrival: { planned: T('11:19'), expected: T('11:32'), delayMin: 13 },
+      toPlatform: '4',
+    });
+  });
+
+  test('without a board prediction, the train page prediction is used, else the train is requested', () => {
+    // S10 Alsógalla -> Győr: left 6 min late, Győr's board has no time yet, the train page says on time.
+    const conn: PlannedConnection = {
+      tripId: 'S10b',
+      serviceDate: '20261112',
+      trainNumber: null,
+      label: 'S10',
+      headsign: 'Győr',
+      departure: T('08:30'),
+      arrival: T('09:38'),
+      durationMin: 68,
+      fromPlatform: null,
+      toPlatform: null,
+    };
+    const dep = board([liveDep('4926', { destination: 'Győr', expectedDeparture: T('08:36') })]);
+    const arr: LiveResult<LiveBoard | null> = {
+      data: {
+        stationCode: null,
+        stationName: 'Győr',
+        departures: [],
+        arrivals: [{ trainNumber: '4926', serviceDate: '20261112', plannedArrival: T('09:38'), expectedArrival: null, platform: '4' }],
+      },
+      fetchedAt: FETCHED,
+      stale: false,
+    };
+    const first = mergeConnections([conn], dep, { from: NOW, limit: 5 }, arr);
+    expect(first.connections[0]!.arrival).toEqual({ planned: T('09:38'), expected: T('09:44'), delayMin: 6 });
+    expect(first.needTrains).toEqual([{ tripId: 'S10b', trainNumber: '4926', serviceDate: '20261112' }]);
+
+    const train = {
+      tripId: null,
+      trainNumber: '4926',
+      serviceDate: '20261112',
+      cancelled: false,
+      delayMin: 6,
+      reason: null,
+      stops: [
+        {
+          stationCode: null,
+          stationName: 'Győr',
+          plannedArrival: T('09:38'),
+          plannedDeparture: null,
+          expectedArrival: T('09:38'),
+          expectedDeparture: null,
+          platform: '4',
+          cancelled: false,
+          passed: false,
+        },
+      ],
+    };
+    const second = mergeConnections([conn], dep, { from: NOW, limit: 5 }, arr, [train]);
+    expect(second.connections[0]!.arrival).toEqual({ planned: T('09:38'), expected: T('09:38'), delayMin: 0 });
+    expect(second.needTrains).toEqual([]);
+  });
 });
 
 describe('mergeTrip', () => {
@@ -293,5 +413,50 @@ describe('safeLive', () => {
     expect(await safeLive(null, async () => ok)).toBeNull();
     expect(await safeLive(source(async () => { throw new Error('boom'); }), (s) => s.departures({ gtfsStopId: 'A', name: 'A' }) as never)).toBeNull();
     expect(await safeLive(source(() => new Promise(() => {})), (s) => s.departures({ gtfsStopId: 'A', name: 'A' }) as never, 20)).toBeNull();
+  });
+});
+
+describe('currentDelayMin ("+N perc")', () => {
+  test('is the source current delay, while the time stays the station prediction', () => {
+    const res = mergeDepartures(
+      [planned('T1', '6212', T('08:30'))],
+      board([liveDep('6212', { expectedDeparture: T('08:34'), currentDelayMin: 9 })]),
+      { now: NOW, limit: 5 },
+    );
+    expect(res.departures[0]).toMatchObject({ departure: { expected: T('08:34'), delayMin: 4 }, currentDelayMin: 9 });
+  });
+
+  test('falls back to the delay at this station', () => {
+    const res = mergeDepartures([planned('T1', '6212', T('08:30'))], board([liveDep('6212', { delayMin: 3 })]), {
+      now: NOW,
+      limit: 5,
+    });
+    expect(res.departures[0]!.currentDelayMin).toBe(3);
+  });
+});
+
+describe('liveTrainNumber', () => {
+  const trip: PlannedTrip = {
+    tripId: 'S10',
+    serviceDate: '20261112',
+    trainNumber: null,
+    label: 'S10',
+    headsign: 'Győr',
+    runsOnDate: true,
+    stops: [
+      { sequence: 1, stopId: 'DELI', stationId: 'DELI', name: 'Budapest-Déli', platform: null, arrival: null, departure: T('08:30') },
+      { sequence: 2, stopId: 'GYOR', stationId: 'GYOR', name: 'Győr', platform: null, arrival: T('10:05'), departure: null },
+    ],
+  };
+
+  test('takes the number from the first station board by time and destination', () => {
+    const b = board([liveDep('4926', { destination: 'Győr' }), liveDep('6212')]).data;
+    expect(liveTrainNumber(trip, b)).toBe('4926');
+  });
+
+  test('gives none when two trains fit or none does', () => {
+    expect(liveTrainNumber(trip, board([liveDep('4926', { destination: 'Győr' }), liveDep('4928', { destination: 'Győr' })]).data)).toBeNull();
+    expect(liveTrainNumber(trip, board([liveDep('6212')]).data)).toBeNull();
+    expect(liveTrainNumber(trip, null)).toBeNull();
   });
 });

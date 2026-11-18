@@ -6,7 +6,7 @@
 
 import { normalizeName } from './gtfs/import.ts';
 import type { PlannedConnection, PlannedDeparture, PlannedStop, PlannedTrip, TrainInfo } from './gtfs/queries.ts';
-import type { LiveBoard, LiveDeparture, LiveResult, LiveSource, LiveStop, LiveTrain } from './live/types.ts';
+import type { LiveArrival, LiveBoard, LiveDeparture, LiveResult, LiveSource, LiveStop, LiveTrain, TrainRef } from './live/types.ts';
 import { addDays, localDate, toIso } from './time.ts';
 
 /** live = fresh live data, stale = last good copy (upstream failing), none = no live data. */
@@ -29,6 +29,8 @@ export interface MergedDeparture extends TrainInfo {
   stopId: string;
   platform: string | null;
   departure: TimeInfo;
+  /** "+N perc": the train's current delay when the source states it, else the departure delay. */
+  currentDelayMin: number | null;
   cancelled: boolean;
   /** Delay or cancellation reason from the live source, null if none. */
   reason: string | null;
@@ -37,9 +39,11 @@ export interface MergedDeparture extends TrainInfo {
 
 export interface MergedConnection extends TrainInfo {
   departure: TimeInfo;
-  /** Expected arrival = live estimate at departure; delay carried over from the departure station. */
+  /** Expected arrival: the source's prediction at the arrival station, else the departure delay carried over. */
   arrival: TimeInfo;
   durationMin: number;
+  /** "+N perc": the train's current delay when the source states it, else the departure delay. */
+  currentDelayMin: number | null;
   fromPlatform: string | null;
   toPlatform: string | null;
   cancelled: boolean;
@@ -96,6 +100,12 @@ export function timeInfo(planned: string, expected: string | null, delayMin: num
 
 const noLive = (planned: string): TimeInfo => ({ planned, expected: null, delayMin: null });
 
+/** What "+N perc" shows for a row: the source's current delay, else the delay at this station. */
+function currentDelay(l: LiveDeparture, departure: TimeInfo): number | null {
+  if (l.cancelled) return null;
+  return l.currentDelayMin ?? departure.delayMin;
+}
+
 interface LiveKeyed {
   tripId: string | null;
   trainNumber: string;
@@ -114,7 +124,7 @@ function findLive<T extends LiveKeyed>(
   const byTrip = entries.find((e) => !used.has(e) && e.tripId !== null && e.tripId === train.tripId && dateOk(e));
   if (byTrip) return byTrip;
   const key = trainNumberKey(train.trainNumber);
-  if (key === null) return undefined;
+  if (key === null) return byTimeAndDestination(entries, used, train, plannedTime, livePlannedTime);
   return entries.find((e) => {
     if (used.has(e) || trainNumberKey(e.trainNumber) !== key) return false;
     if (e.serviceDate !== null) return e.serviceDate === train.serviceDate;
@@ -122,6 +132,39 @@ function findLive<T extends LiveKeyed>(
     const t = livePlannedTime(e);
     return t !== null && Date.parse(t) === Date.parse(plannedTime);
   });
+}
+
+/**
+ * Trains without a number in the timetable (MÁV's GTFS leaves it out for S/Z/IR lines):
+ * same planned time at this station and same destination, and only if exactly one
+ * live entry fits, so two trains leaving in the same minute are never mixed up.
+ */
+function byTimeAndDestination<T extends LiveKeyed>(
+  entries: T[],
+  used: Set<T>,
+  train: TrainInfo,
+  plannedTime: string,
+  livePlannedTime: (e: T) => string | null,
+): T | undefined {
+  if (!train.headsign) return undefined;
+  const dest = normalizeName(train.headsign);
+  const at = Date.parse(plannedTime);
+  const fits = entries.filter((e) => {
+    const t = livePlannedTime(e);
+    const d = 'destination' in e && typeof e.destination === 'string' ? normalizeName(e.destination) : null;
+    return t !== null && Date.parse(t) === at && d === dest && (e.serviceDate === null || e.serviceDate === train.serviceDate);
+  });
+  return fits.length === 1 && !used.has(fits[0]!) ? fits[0] : undefined;
+}
+
+/**
+ * The live train number of a trip without one in the timetable (S/Z/IR lines): found on
+ * its first station's board by planned departure and destination, only if exactly one fits.
+ */
+export function liveTrainNumber(trip: PlannedTrip, board: LiveBoard | null): string | null {
+  const first = trip.stops[0];
+  if (!board || !first?.departure) return null;
+  return byTimeAndDestination(board.departures, new Set(), trip, first.departure, (e) => e.plannedDeparture)?.trainNumber ?? null;
 }
 
 // ---------------------------------------------------------------- boards
@@ -142,12 +185,14 @@ export function mergeDepartures(
 
   const merged = planned.map((p): MergedDeparture => {
     const l = findLive(entries, used, p, p.departure, (e) => e.plannedDeparture);
-    if (!l) return { ...p, departure: noLive(p.departure), cancelled: false, reason: null, live: 'none' };
+    if (!l) return { ...p, departure: noLive(p.departure), currentDelayMin: null, cancelled: false, reason: null, live: 'none' };
     used.add(l);
+    const departure = l.cancelled ? noLive(p.departure) : timeInfo(p.departure, l.expectedDeparture, l.delayMin);
     return {
       ...p,
       platform: l.platform ?? p.platform,
-      departure: l.cancelled ? noLive(p.departure) : timeInfo(p.departure, l.expectedDeparture, l.delayMin),
+      departure,
+      currentDelayMin: currentDelay(l, departure),
       cancelled: l.cancelled,
       reason: l.reason,
       live: info.state,
@@ -161,39 +206,92 @@ export function mergeDepartures(
   return { live: info, departures };
 }
 
-/** Route results, using the live board of the departure station (one upstream request). */
+/**
+ * Route results, using the live board of the departure station and, when given, of the
+ * arrival station. The arrival time is the arrival station's own prediction for the same
+ * train (number + service date + planned arrival); without one, the departure delay is
+ * carried over.
+ */
 export function mergeConnections(
   planned: PlannedConnection[],
   live: LiveResult<LiveBoard | null> | null,
   opts: { from: number; limit: number },
-): { live: LiveInfo; connections: MergedConnection[] } {
+  arrivalBoard: LiveResult<LiveBoard | null> | null = null,
+  trains: LiveTrain[] = [],
+): { live: LiveInfo; connections: MergedConnection[]; needTrains: TrainRef[] } {
   const info = liveInfo(live);
   const entries = live?.data?.departures ?? [];
+  const arrivals = arrivalBoard?.data?.arrivals ?? [];
   const used = new Set<LiveDeparture>();
+  const missing = new Map<MergedConnection, TrainRef>();
 
   const merged = planned.map((p): MergedConnection => {
     const l = findLive(entries, used, p, p.departure, (e) => e.plannedDeparture);
     if (!l) {
-      return { ...p, departure: noLive(p.departure), arrival: noLive(p.arrival), cancelled: false, reason: null, live: 'none' };
+      return {
+        ...p,
+        departure: noLive(p.departure),
+        arrival: noLive(p.arrival),
+        currentDelayMin: null,
+        cancelled: false,
+        reason: null,
+        live: 'none',
+      };
     }
     used.add(l);
     const departure = l.cancelled ? noLive(p.departure) : timeInfo(p.departure, l.expectedDeparture, l.delayMin);
-    return {
+    const a = l.cancelled ? undefined : findArrival(arrivals, l, p.arrival);
+    // Arrival prediction: the arrival station's board, else the train's own page
+    // (boards only predict trains that are close), else the departure delay carried over.
+    const predicted = a?.expectedArrival ?? (l.cancelled ? null : trainPrediction(trains, l, p.arrival));
+    const c: MergedConnection = {
       ...p,
       fromPlatform: l.platform ?? p.fromPlatform,
+      toPlatform: a?.platform ?? p.toPlatform,
       departure,
-      arrival: l.cancelled ? noLive(p.arrival) : timeInfo(p.arrival, null, departure.delayMin),
+      arrival: l.cancelled
+        ? noLive(p.arrival)
+        : predicted
+          ? timeInfo(p.arrival, predicted, null)
+          : timeInfo(p.arrival, null, departure.delayMin),
+      currentDelayMin: currentDelay(l, departure),
       cancelled: l.cancelled,
       reason: l.reason,
       live: info.state,
     };
+    if (!l.cancelled && !predicted) {
+      missing.set(c, { tripId: p.tripId, trainNumber: l.trainNumber, serviceDate: l.serviceDate ?? p.serviceDate });
+    }
+    return c;
   });
 
   const cutoff = opts.from - 60_000;
   const connections = merged
     .filter((c) => Date.parse(c.cancelled ? c.departure.planned : (c.departure.expected ?? c.departure.planned)) >= cutoff)
     .slice(0, opts.limit);
-  return { live: info, connections };
+  const needTrains = connections.flatMap((c) => (missing.has(c) ? [missing.get(c)!] : []));
+  return { live: info, connections, needTrains };
+}
+
+/** The train page's predicted arrival at the stop with this planned arrival. */
+function trainPrediction(trains: LiveTrain[], dep: LiveDeparture, plannedArrival: string): string | null {
+  const key = trainNumberKey(dep.trainNumber);
+  const at = Date.parse(plannedArrival);
+  const t = trains.find((x) => trainNumberKey(x.trainNumber) === key && (dep.serviceDate === null || x.serviceDate === dep.serviceDate));
+  const stop = t?.stops.find((s) => s.plannedArrival !== null && Date.parse(s.plannedArrival) === at);
+  return stop?.expectedArrival ?? null;
+}
+
+/** The same run at the arrival station: live train number (known also for S/Z/IR trains) + date + planned time. */
+function findArrival(arrivals: LiveArrival[], dep: LiveDeparture, plannedArrival: string): LiveArrival | undefined {
+  const key = trainNumberKey(dep.trainNumber);
+  const at = Date.parse(plannedArrival);
+  return arrivals.find(
+    (a) =>
+      trainNumberKey(a.trainNumber) === key &&
+      (a.serviceDate === null || dep.serviceDate === null || a.serviceDate === dep.serviceDate) &&
+      Date.parse(a.plannedArrival) === at,
+  );
 }
 
 // ---------------------------------------------------------------- train detail

@@ -33,7 +33,7 @@ Users: the owner and a few close friends. Not a public product.
    - The owner downloads the zip and places it in `data/gtfs/`. Never commit the GTFS files.
    - `bun run import-gtfs` loads stops, routes, trips, stop_times, calendar, calendar_dates into SQLite.
    - Verify the current download location and terms before relying on it.
-2. Live delays: not connected yet. Planned source: MÁV's official GTFS-Realtime feed for registered developers (nap.mavcsoport.hu), see `docs/live-api/FINDINGS.md`.
+2. Live delays: vonatinfo.mav.hu, MÁV's public train map (`src/live/vonatinfo.ts`, on by default, `MAVY_LIVE=off` disables it). Unofficial and undocumented: it can change without notice. Only its per-train (`TRAIN`) and per-station (`STATION`) requests are used, never the whole-country `TRAINS` list. Details in `docs/live-api/FINDINGS.md`. MÁV's official GTFS-Realtime feed (nap.mavcsoport.hu) would replace it once access is granted.
    - mavplusz.hu is not usable: its API needs a JWT obtained via Google reCAPTCHA. Do not work around that.
    - All live code lives behind the `LiveSource` interface in `src/live/types.ts` (one client file in `src/live/`). The rest of the app talks only to that interface.
    - A source may give a delay reason (`reason`); the UI shows it. Never invent reasons.
@@ -71,7 +71,7 @@ src/
   gtfs/queries.ts    departures, route search, trip stops
   live/cache.ts      shared 45 s cache, request pacing, exponential backoff (no MÁV knowledge)
   live/types.ts      LiveSource interface, LiveTrain, LiveStop, delay + reason types
-                     (the live client itself, e.g. live/gtfs-rt.ts, is not written yet)
+  live/vonatinfo.ts  live client: vonatinfo.mav.hu TRAIN/STATION HTML -> LiveTrain/LiveBoard
   merge.ts           planned + live -> what the UI shows
   time.ts            Europe/Budapest time helpers (service days, DST, ISO output)
 test/                bun:test tests, fixtures/gtfs/ = tiny fake feed

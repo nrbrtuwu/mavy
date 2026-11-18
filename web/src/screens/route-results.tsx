@@ -124,7 +124,11 @@ function ConnectionRow({ c, showLive }: { c: Connection; showLive: boolean }) {
           <TimeBlock time={c.arrival} cancelled={c.cancelled} showLive={showLive} />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm leading-tight">
             <span className="text-muted-foreground">{durationText(c.durationMin)}</span>
-            {(showLive || c.cancelled) && <DelayText time={c.departure} cancelled={c.cancelled} className="text-xs" />}
+            {(showLive || c.cancelled) && <DelayText
+                time={{ ...c.departure, delayMin: c.currentDelayMin ?? c.departure.delayMin }}
+                cancelled={c.cancelled}
+                className="text-xs"
+              />}
             {c.fromPlatform && <span className="text-xs text-muted-foreground">{platformText(c.fromPlatform)}</span>}
           </div>
         </a>

@@ -96,18 +96,20 @@ function TrainState({ trip }: { trip: Trip }) {
       </Alert>
     )
   }
-  if (trip.delayMin === null) return null
+  if (trip.delayMin === null && !trip.reason) return null
   return (
     <Alert>
-      <AlertTitle>
-        {trip.delayMin > 0 ? (
-          <>
-            Jelenleg <DelayText time={{ planned: "", expected: null, delayMin: trip.delayMin }} cancelled={false} /> késés
-          </>
-        ) : (
-          "Időben közlekedik."
-        )}
-      </AlertTitle>
+      {trip.delayMin !== null && (
+        <AlertTitle>
+          {trip.delayMin > 0 ? (
+            <>
+              Jelenleg <DelayText time={{ planned: "", expected: null, delayMin: trip.delayMin }} cancelled={false} /> késés
+            </>
+          ) : (
+            "Időben közlekedik"
+          )}
+        </AlertTitle>
+      )}
       {trip.reason && (
         <AlertDescription>
           <DelayReason reason={trip.reason} />

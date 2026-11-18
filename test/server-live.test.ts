@@ -91,15 +91,17 @@ describe('with live data', () => {
     });
   });
 
-  it('route near now uses the departure station board', async () => {
+  it('route near now uses both station boards, then the train page for the arrival', async () => {
     const live = new FakeLive();
     await withServer(live, async (get) => {
       const body = (await get('/api/route?from=BPK&to=DEB')).json();
+      // Neither the arrival board nor the (stop-less) train page predicts, so the departure delay is carried over.
       expect(body.connections[0]).toMatchObject({
         trainNumber: '6212',
         arrival: { planned: '2026-11-12T09:50:00+01:00', expected: '2026-11-12T09:57:00+01:00', delayMin: 7 },
       });
-      expect(live.calls).toEqual(['departures:BPK']);
+      expect(body.needTrains).toBeUndefined();
+      expect(live.calls.sort()).toEqual(['departures:BPK', 'departures:DEB', 'train:T1:20261112']);
     });
   });
 

@@ -30,6 +30,8 @@ export interface Departure extends TrainInfo {
   stopId: string
   platform: string | null
   departure: TimeInfo
+  /** "+N perc": the train's current delay (absent in simulated data: use departure.delayMin). */
+  currentDelayMin?: number | null
   cancelled: boolean
   reason: string | null
   live: LiveState
@@ -39,6 +41,8 @@ export interface Connection extends TrainInfo {
   departure: TimeInfo
   arrival: TimeInfo
   durationMin: number
+  /** "+N perc": the train's current delay (absent in simulated data: use departure.delayMin). */
+  currentDelayMin?: number | null
   fromPlatform: string | null
   toPlatform: string | null
   cancelled: boolean

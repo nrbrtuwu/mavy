@@ -41,16 +41,30 @@ export interface LiveDeparture {
   plannedDeparture: string;
   expectedDeparture: string | null;
   delayMin: number | null;
+  /** The train's delay right now, if the source states it separately (shown as "+N perc"). */
+  currentDelayMin?: number | null;
   platform: string | null;
   cancelled: boolean;
   /** Why the train is late or cancelled, as the source words it. null if not given. */
   reason: string | null;
 }
 
+/** A train arriving at the board's station (also ones that continue). */
+export interface LiveArrival {
+  trainNumber: string;
+  serviceDate: string | null;
+  plannedArrival: string;
+  /** The station's own predicted (or actual) arrival, null if none yet. */
+  expectedArrival: string | null;
+  platform: string | null;
+}
+
 export interface LiveBoard {
   stationCode: string | null;
   stationName: string;
   departures: LiveDeparture[];
+  /** Arrivals, if the source gives them. Used for the arrival time in route results. */
+  arrivals?: LiveArrival[];
 }
 
 /** A live answer plus how fresh it is. stale = upstream failed, this is the last good copy. */

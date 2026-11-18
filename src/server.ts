@@ -9,11 +9,14 @@ import { registerPasswordAuth } from './auth.ts';
 import { DB_PATH } from './gtfs/import.ts';
 import { Timetable } from './gtfs/queries.ts';
 import type { LiveSource } from './live/types.ts';
-import { isLiveRelevant, mergeConnections, mergeDepartures, mergeTrip, safeLive } from './merge.ts';
+import { VonatinfoSource } from './live/vonatinfo.ts';
+import { isLiveRelevant, liveTrainNumber, mergeConnections, mergeDepartures, mergeTrip, safeLive } from './merge.ts';
 import { parseServiceDate, parseUserTime } from './time.ts';
 
 /** Planned departures this far back are fetched too, so delayed trains still show. */
 const LOOKBACK_SEC = 3600;
+/** Route results: at most this many train pages fetched for arrival predictions. */
+const MAX_ARRIVAL_TRAINS = 3;
 
 /** Built frontend (bun run build writes it from web/). */
 export const PUBLIC_DIR = resolve(fileURLToPath(new URL('../dist/public/', import.meta.url)));
@@ -191,14 +194,25 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
     const planned = tt.route(q.from, q.to, { time: start, limit: q.limit + 20 });
     if (!planned) return reply.code(404).send({ error: 'unknown_station' });
     if (planned.from.id === planned.to.id) return badRequest(reply, 'from and to are the same station');
-    const liveBoard = nearNow
-      ? await safeLive(live, (s) => s.departures({ gtfsStopId: planned.from.id, name: planned.from.name }))
-      : null;
-    return {
-      from: planned.from,
-      to: planned.to,
-      ...mergeConnections(planned.connections, liveBoard, { from: time, limit: q.limit }),
-    };
+    // Two boards: departure station for departures, arrival station for its own predicted arrivals.
+    const [liveBoard, arrivalBoard] = nearNow
+      ? await Promise.all([
+          safeLive(live, (s) => s.departures({ gtfsStopId: planned.from.id, name: planned.from.name })),
+          safeLive(live, (s) => s.departures({ gtfsStopId: planned.to.id, name: planned.to.name })),
+        ])
+      : [null, null];
+    const opts = { from: time, limit: q.limit };
+    let merged = mergeConnections(planned.connections, liveBoard, opts, arrivalBoard);
+    // Boards predict arrivals only for trains close by; for the others, ask the train's
+    // own page (a few trains at most, cached like everything else).
+    if (merged.needTrains.length > 0) {
+      const results = await Promise.all(
+        merged.needTrains.slice(0, MAX_ARRIVAL_TRAINS).map((ref) => safeLive(live, (s) => s.train(ref))),
+      );
+      const trains = results.flatMap((r) => (r?.data ? [r.data] : []));
+      if (trains.length > 0) merged = mergeConnections(planned.connections, liveBoard, opts, arrivalBoard, trains);
+    }
+    return { from: planned.from, to: planned.to, live: merged.live, connections: merged.connections };
   });
 
   app.get<{ Params: { tripId: string } }>('/api/train/:tripId', async (req, reply) => {
@@ -215,11 +229,17 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
     const t = now();
     const trip = tt.trip(req.params.tripId, { now: t, date });
     if (!trip) return reply.code(404).send({ error: 'unknown_train' });
+    const relevant = trip.runsOnDate && isLiveRelevant(trip.serviceDate, t);
+    // S/Z/IR trains have no number in MÁV's GTFS: take it from the first station's live board.
+    let trainNumber = trip.trainNumber;
+    const first = trip.stops[0];
+    if (relevant && !trainNumber && first) {
+      const board = await safeLive(live, (s) => s.departures({ gtfsStopId: first.stationId, name: first.name }));
+      trainNumber = liveTrainNumber(trip, board?.data ?? null);
+    }
     const liveTrain =
-      trip.runsOnDate && isLiveRelevant(trip.serviceDate, t)
-        ? await safeLive(live, (s) =>
-            s.train({ tripId: trip.tripId, trainNumber: trip.trainNumber, serviceDate: trip.serviceDate }),
-          )
+      relevant && trainNumber
+        ? await safeLive(live, (s) => s.train({ tripId: trip.tripId, trainNumber, serviceDate: trip.serviceDate }))
         : null;
     return mergeTrip(trip, liveTrain);
   });
@@ -261,7 +281,8 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
 }
 
 if (import.meta.main) {
-  const app = buildServer();
+  // Live delays from vonatinfo.mav.hu unless MAVY_LIVE=off.
+  const app = buildServer({ live: process.env.MAVY_LIVE === 'off' ? null : new VonatinfoSource() });
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '127.0.0.1';
   app.listen({ port, host }).catch((err) => {
