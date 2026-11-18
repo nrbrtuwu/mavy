@@ -99,6 +99,25 @@ export function trackHistoryDepth() {
   })
 }
 
+/**
+ * Call once at start-up: in-app links (`#/…`) change the page with history.pushState
+ * instead of a fragment navigation. iPhone Safari treats every link tap as a navigation
+ * (toolbar reacts, the whole page repaints and flashes grey for a frame); pushState is not
+ * one. The app still listens to "hashchange", so one is dispatched by hand.
+ */
+export function interceptAppLinks() {
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    const a = (e.target as Element | null)?.closest?.("a")
+    const target = a?.getAttribute("href")
+    if (!a || !target?.startsWith("#/") || (a.target && a.target !== "_self") || a.hasAttribute("download")) return
+    e.preventDefault()
+    if (target === window.location.hash) return
+    window.history.pushState({ mavyDepth: lastDepth + 1 }, "", target)
+    window.dispatchEvent(new HashChangeEvent("hashchange"))
+  })
+}
+
 /** True when the previous history entry is a page of this app. */
 export function canGoBack(): boolean {
   return historyDepth() > 0
