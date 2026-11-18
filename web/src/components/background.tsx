@@ -14,6 +14,10 @@
 // - The library pauses each layer while the tab is hidden or the element is off screen.
 // - prefers-reduced-motion: a still frame (speed 0).
 //
+// Banding: dark greys have few 8-bit steps, so a smooth gradient shows as contour lines
+// ("jagged lines"). A faint grain (the library's grainOverlay, a fixed noise pattern, not
+// animated) dithers the steps away. Strong enough to break up bands, too faint to see as grain.
+//
 // Placement (iOS 26 Safari, tested on the owner's iPhone with test pages):
 // - position: fixed content is never drawn under Safari's floating bottom toolbar; Safari
 //   paints a solid bar there (coloured from a fixed bottom-edge element or the page).
@@ -28,6 +32,8 @@ import { MeshGradient } from "@paper-design/shaders-react"
 
 const PIXEL_BUDGET = 600_000 // per layer, ~ a 1000x600 canvas
 const MIN_PIXEL_RATIO = 1
+/** Dithering against banding (0 to 1). */
+const GRAIN = 0.12
 /** Black layer over the gradients: higher = darker background. */
 const DIM = { dark: 0.65, light: 0.25 }
 
@@ -76,6 +82,7 @@ export function AnimatedBackground() {
         speed={0.3 * motion}
         minPixelRatio={MIN_PIXEL_RATIO}
         maxPixelCount={PIXEL_BUDGET}
+        grainOverlay={GRAIN}
         webGlContextAttributes={{ antialias: false, powerPreference: "low-power" }}
       />
       <MeshGradient
@@ -84,6 +91,7 @@ export function AnimatedBackground() {
         speed={0.2 * motion}
         minPixelRatio={MIN_PIXEL_RATIO}
         maxPixelCount={PIXEL_BUDGET}
+        grainOverlay={GRAIN}
         webGlContextAttributes={{ antialias: false, powerPreference: "low-power" }}
       />
       <div className="absolute inset-0 bg-black" style={{ opacity: dark ? DIM.dark : DIM.light }} />
