@@ -1,6 +1,6 @@
 // Small building blocks shared by the board, route and train screens.
 
-import { AlertTriangle, CircleAlert, CloudOff, FlaskConical, Radio, WifiOff } from "lucide-react"
+import { AlertTriangle, CircleAlert, CloudOff, Radio, WifiOff } from "lucide-react"
 import { cn } from "cn"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -224,26 +224,12 @@ export function LiveStatus({
   dataTime,
   savedAt,
   refreshError,
-  demo = false,
 }: {
   live: LiveInfo
   dataTime: number | null
   savedAt: number | null
   refreshError: { at: number; message: string } | null
-  /** Simulated delays are shown (setting): say so instead of the live data line. */
-  demo?: boolean
 }) {
-  if (demo) {
-    return (
-      <Alert>
-        <FlaskConical aria-hidden />
-        <AlertTitle>Szimulált késések</AlertTitle>
-        <AlertDescription>
-          Bemutató: a késések, törlések és okok kitaláltak, nem valós adatok. Kikapcsolás: Beállítások.
-        </AlertDescription>
-      </Alert>
-    )
-  }
   return (
     <div className="flex flex-col gap-2">
       {savedAt !== null && (

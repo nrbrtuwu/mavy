@@ -54,22 +54,6 @@ export function SettingsScreen() {
           />
         </Label>
       </ScreenSection>
-      <Separator />
-      <ScreenSection className="pt-4">
-        <Label htmlFor="simulate-delays" className="flex min-h-12 cursor-pointer items-center justify-between gap-4">
-          <span className="flex flex-col gap-1">
-            <span className="font-medium">Szimulált késések</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Bemutató: kitalált késéseket és törléseket mutat, amíg nincs valódi élő adat. Nem valós információ.
-            </span>
-          </span>
-          <Switch
-            id="simulate-delays"
-            checked={settings.simulateDelays}
-            onCheckedChange={(checked) => updateSettings({ simulateDelays: checked })}
-          />
-        </Label>
-      </ScreenSection>
     </Screen>
   )
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback } from "react"
 import { cn } from "cn"
 
 import { RouteArrow } from "@/components/route-arrow"
@@ -10,8 +10,6 @@ import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { serviceDateLabel, timeParts } from "@/lib/format"
 import { href } from "@/lib/router"
-import { useSettings } from "@/lib/settings"
-import { simulateTrip } from "@/lib/simulate"
 import type { TimeInfo, Trip } from "@/lib/types"
 
 export function TrainScreen({ tripId, date }: { tripId: string; date: string }) {
@@ -21,10 +19,7 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
   )
   const live = useLiveData(`train:${tripId}:${date}`, load)
   const { error, dataTime, savedAt, refreshError } = live
-  // Settings > Szimulált késések: made-up delays for previewing the design (only on days it runs).
-  const { simulateDelays } = useSettings()
-  const demo = simulateDelays && !!live.data?.runsOnDate
-  const t = useMemo(() => (live.data && demo ? simulateTrip(live.data) : live.data), [live.data, demo])
+  const t = live.data
 
   if (error) {
     return (
@@ -56,7 +51,7 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
     >
       <ScreenSection>
         <TrainState trip={t} />
-        <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} demo={demo} />
+        <LiveStatus live={t.live} dataTime={dataTime} savedAt={savedAt} refreshError={refreshError} />
       </ScreenSection>
       <div className="border-t">
         <Table>

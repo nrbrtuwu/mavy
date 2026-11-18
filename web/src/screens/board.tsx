@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback } from "react"
 import { ChevronRight } from "lucide-react"
 import { cn } from "cn"
 
@@ -10,8 +10,6 @@ import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { platformText } from "@/lib/format"
 import { href } from "@/lib/router"
-import { useSettings } from "@/lib/settings"
-import { simulateBoard } from "@/lib/simulate"
 import type { BoardResponse, Departure } from "@/lib/types"
 
 export function BoardScreen({ stationId }: { stationId: string }) {
@@ -22,12 +20,7 @@ export function BoardScreen({ stationId }: { stationId: string }) {
   )
   const live = useLiveData(`board:${stationId}`, load)
   const { error, dataTime, savedAt, refreshError } = live
-  // Settings > Szimulált késések: made-up delays for previewing the design.
-  const { simulateDelays } = useSettings()
-  const data = useMemo(
-    () => (live.data && simulateDelays ? simulateBoard(live.data) : live.data),
-    [live.data, simulateDelays],
-  )
+  const data = live.data
 
   if (error) {
     return (
@@ -51,7 +44,6 @@ export function BoardScreen({ stationId }: { stationId: string }) {
           dataTime={dataTime}
           savedAt={savedAt}
           refreshError={refreshError}
-          demo={simulateDelays}
         />
       </ScreenSection>
       {data.departures.length === 0 ? (

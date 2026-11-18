@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect } from "react"
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react"
 
 import { FavoriteButton } from "@/components/favorite-button"
@@ -13,8 +13,6 @@ import { api } from "@/lib/api"
 import { writeLastRoute } from "@/lib/last-route"
 import { durationText, platformText } from "@/lib/format"
 import { href } from "@/lib/router"
-import { useSettings } from "@/lib/settings"
-import { simulateRoute } from "@/lib/simulate"
 import type { Connection, RouteResponse } from "@/lib/types"
 
 export function RouteResultsScreen({ from, to, time }: { from: string; to: string; time: string | null }) {
@@ -28,12 +26,7 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
   )
   const live = useLiveData(`route:${from}:${to}:${time}`, load)
   const { error, dataTime, savedAt, refreshError } = live
-  // Settings > Szimulált késések: made-up delays for previewing the design.
-  const { simulateDelays } = useSettings()
-  const data = useMemo(
-    () => (live.data && simulateDelays ? simulateRoute(live.data) : live.data),
-    [live.data, simulateDelays],
-  )
+  const data = live.data
 
   // The route last looked at (form, Visszaút or a favorite) becomes the form's stations.
   const fromStation = data?.from
@@ -83,7 +76,6 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
           dataTime={dataTime}
           savedAt={savedAt}
           refreshError={refreshError}
-          demo={simulateDelays}
         />
       </ScreenSection>
       {data.connections.length === 0 ? (
