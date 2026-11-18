@@ -52,6 +52,17 @@ planned and actual data in standard GTFS / GTFS-RT formats, based on EU requirem
   into MÁV+ "soon". No public developer feed announced.
 - The NAP portal is a slow Angular app; it did not finish loading in Claude's browser pane.
 
+## Update 2026-11-16: emma.mav.hu and the NAP listing
+
+- github.com/doomhyena/MAVTracker (archived 2025-12-28) proxied
+  `https://emma.mav.hu/otp2-backend/otp/routers/default/index/graphql` without any token. Today that URL
+  answers `302` to `https://mavplusz.hu/otp2-backend/otp/routers/default/index/graphql`, i.e. the same
+  reCAPTCHA-gated backend as above. Not usable.
+- NAP lists exactly four MÁV datasets: rail + GYSEV GTFS, bus GTFS, rail vehicle positions (GTFS-RT),
+  bus vehicle positions (GTFS-RT). No TripUpdates, no Alerts. The rail GTFS-RT listing has URL `#` and the
+  format description "Átalakítás alatt…" (under construction); update interval stated as 5 minutes.
+  Access details have to be requested from MÁV by e-mail.
+
 ## Useful facts for any future live source
 
 - IDs are GTFS ids with feed prefix `1:`: trips `1:35051201`, stops `1:005510017_6` (platform-level, `_N` suffix),
