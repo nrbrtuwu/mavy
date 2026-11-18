@@ -165,6 +165,31 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
     return reply.type('application/json; charset=utf-8').send(allStations.body);
   });
 
+  // Stations reachable by a direct train from one station (the route form's "Hová" list).
+  // Depends only on the timetable: cached per import, browsers revalidate with the ETag.
+  const reachable = new Map<string, string>();
+  let reachableEtag = '';
+  app.get<{ Params: { id: string } }>('/api/stations/:id/reachable', async (req, reply) => {
+    const tt = getTimetable();
+    if (!tt) return noTimetable(reply);
+    const etag = `"reachable-${tt.meta().imported_at ?? 'unknown'}"`;
+    if (etag !== reachableEtag) {
+      reachable.clear();
+      reachableEtag = etag;
+    }
+    let body = reachable.get(req.params.id);
+    if (body === undefined) {
+      const ids = tt.reachableFrom(req.params.id);
+      if (!ids) return reply.code(404).send({ error: 'unknown_station' });
+      body = JSON.stringify({ stations: ids });
+      if (reachable.size >= 500) reachable.clear();
+      reachable.set(req.params.id, body);
+    }
+    reply.header('etag', etag).header('cache-control', 'no-cache');
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type('application/json; charset=utf-8').send(body);
+  });
+
   app.get('/api/departures', async (req, reply) => {
     const q = parse(DeparturesQuery, req.query, reply);
     if (!q) return reply;

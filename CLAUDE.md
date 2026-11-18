@@ -9,6 +9,7 @@ Users: the owner and a few close friends. Not a public product.
 - Route search: next trains from station A to station B
 - Train detail: every stop with planned time, expected time, delay
 - Saved favorites (routes and stations), stored on the device
+- Station search: the device's 5 most picked stations shown when the field is empty and ranked first (`web/src/lib/frequent-stations.ts`); "Hová" only offers stations a direct train reaches from "Honnan"
 - Settings page (last navbar item): start page (default route search), animated background on/off. Stored on the device
 - Installable PWA, works on phones, shows last cached data when offline
 
@@ -92,6 +93,7 @@ docs/live-api/       captured request/response samples
 ## API (own backend)
 
 - `GET /api/stations?q=` station search
+- `GET /api/stations/:id/reachable` station ids a direct train reaches from this one (route form's "Hová" list)
 - `GET /api/departures?station=&limit=` board with delays
 - `GET /api/route?from=&to=&time=` next trains between two stations
 - `GET /api/train/:tripId` all stops, planned vs expected

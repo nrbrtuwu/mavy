@@ -1,22 +1,59 @@
 // Station search input with a result list. Used on the station search and route form screens.
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { MapPin, Search } from "lucide-react"
+import { History, MapPin, Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { api, errorMessage } from "@/lib/api"
-import { loadStationList, onStationListLoaded, searchStationsLocal, stationList } from "@/lib/stations"
+import { frequentFirst, useTopStations } from "@/lib/frequent-stations"
+import {
+  loadReachable,
+  loadStationList,
+  onStationListLoaded,
+  reachableFailedFor,
+  reachableFrom,
+  searchStationsLocal,
+  stationList,
+} from "@/lib/stations"
 import type { Station, StationsResponse } from "@/lib/types"
 
 /** Server search results kept in memory (only used until the station list has loaded). */
 const resultCache = new Map<string, Station[]>()
 
 /**
+ * Stations a direct train reaches from `stationId`: `set` is null with no station, while
+ * loading, or when loading failed (`failed`).
+ */
+export function useReachable(stationId: string | null): { set: ReadonlySet<string> | null; failed: boolean } {
+  const [, setLoaded] = useState(0)
+  useEffect(() => {
+    if (!stationId) return
+    let alive = true
+    void loadReachable(stationId).then(() => alive && setLoaded((n) => n + 1))
+    return () => {
+      alive = false
+    }
+  }, [stationId])
+  if (!stationId) return { set: null, failed: false }
+  const set = reachableFrom(stationId)
+  return { set, failed: !set && reachableFailedFor(stationId) }
+}
+
+export interface StationSearch {
+  stations: Station[] | null
+  error: string | null
+  /** The list is this device's most picked stations (empty query), not search results. */
+  frequent: boolean
+}
+
+/**
  * Station search. With the station list loaded (normally right after start-up): instant,
  * in memory, no request per keystroke. Until then: debounced server search.
- * stations = null while the query is too short.
+ * Empty query: the device's most picked stations. stations = null for a one-letter query.
+ * `only`: allowed station ids (e.g. reachable by a direct train), null = all.
  */
-export function useStationSearch(query: string): { stations: Station[] | null; error: string | null } {
+export function useStationSearch(query: string, only: ReadonlySet<string> | null = null): StationSearch {
+  const top = useTopStations()
   const [result, setResult] = useState<{ q: string; stations: Station[] | null; error: string | null }>({
     q: "",
     stations: null,
@@ -24,7 +61,11 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
   })
   const q = query.trim()
   const local = useSyncExternalStore(onStationListLoaded, stationList)
-  const localResults = useMemo(() => (local && q.length >= 2 ? searchStationsLocal(local, q) : null), [local, q])
+  const allowed = useMemo(() => (only ? (s: Station) => only.has(s.id) : () => true), [only])
+  const localResults = useMemo(
+    () => (local && q.length >= 2 ? searchStationsLocal(local, q, 20, only) : null),
+    [local, q, only],
+  )
 
   useEffect(() => {
     void loadStationList()
@@ -49,12 +90,17 @@ export function useStationSearch(query: string): { stations: Station[] | null; e
     }
   }, [local, q])
 
-  if (q.length < 2) return { stations: null, error: null }
-  if (localResults) return { stations: localResults, error: null }
+  const ranked = (list: Station[]) => frequentFirst(list.filter(allowed), top)
+  if (q === "") {
+    const frequent = top.filter(allowed)
+    return { stations: frequent.length ? frequent : null, error: null, frequent: true }
+  }
+  if (q.length < 2) return { stations: null, error: null, frequent: false }
+  if (localResults) return { stations: ranked(localResults), error: null, frequent: false }
   const cached = resultCache.get(q)
-  if (cached) return { stations: cached, error: null }
-  if (result.q !== q) return { stations: null, error: null }
-  return { stations: result.stations, error: result.error }
+  if (cached) return { stations: ranked(cached), error: null, frequent: false }
+  if (result.q !== q) return { stations: null, error: null, frequent: false }
+  return { stations: result.stations && ranked(result.stations), error: result.error, frequent: false }
 }
 
 export function SearchInput({
@@ -89,27 +135,56 @@ export function SearchInput({
   )
 }
 
-/** Result list: links (station search) or buttons (route form). */
+/**
+ * Result list: links (station search) or buttons (route form). `onPick` runs for both
+ * (links: before the page changes). `note`: one quiet line above the list.
+ */
 export function StationResults({
-  stations,
-  error,
+  search: { stations, error, frequent },
   onPick,
   hrefFor,
+  note,
+  empty = "Nincs találat",
 }: {
-  stations: Station[] | null
-  error: string | null
+  search: StationSearch
   onPick?: (s: Station) => void
   hrefFor?: (s: Station) => string
+  note?: string | null
+  empty?: string
 }) {
   if (error) return <p className="px-1 text-sm text-destructive">{error}</p>
   if (stations === null) return null
-  if (stations.length === 0) return <p className="px-1 text-sm text-muted-foreground">Nincs találat.</p>
+  const label = frequent ? "Gyakran keresett" : note
+  return (
+    <div className="flex flex-col gap-2">
+      {label && <p className="px-1 text-xs text-muted-foreground">{label}</p>}
+      {stations.length === 0 ? (
+        <p className="px-1 text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <StationList stations={stations} frequent={frequent} onPick={onPick} hrefFor={hrefFor} />
+      )}
+    </div>
+  )
+}
+
+function StationList({
+  stations,
+  frequent,
+  onPick,
+  hrefFor,
+}: {
+  stations: Station[]
+  frequent: boolean
+  onPick?: (s: Station) => void
+  hrefFor?: (s: Station) => string
+}) {
+  const Icon = frequent ? History : MapPin
   return (
     <ul className="divide-y overflow-hidden rounded-xl ring-1 ring-foreground/10">
       {stations.map((s) => {
         const content = (
           <>
-            <MapPin className="size-4 text-muted-foreground" aria-hidden />
+            <Icon className="size-4 text-muted-foreground" aria-hidden />
             <span>{s.name}</span>
           </>
         )
@@ -117,7 +192,7 @@ export function StationResults({
         return (
           <li key={s.id}>
             {hrefFor ? (
-              <a href={hrefFor(s)} className={cls}>
+              <a href={hrefFor(s)} className={cls} onClick={() => onPick?.(s)}>
                 {content}
               </a>
             ) : (

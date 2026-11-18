@@ -87,3 +87,8 @@ export interface RouteResponse {
 export interface StationsResponse {
   stations: Station[]
 }
+
+/** GET /api/stations/:id/reachable */
+export interface StationIdsResponse {
+  stations: string[]
+}

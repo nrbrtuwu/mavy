@@ -207,6 +207,27 @@ export class Timetable {
     return { station: { id: row.stop_id, name: row.stop_name }, stopIds };
   }
 
+  /**
+   * Stations a direct train goes to from this station (boarding here, getting off there,
+   * on any day of the feed), as top-level station ids. Same pickup/drop-off rules as route().
+   */
+  reachableFrom(stationId: string): string[] | null {
+    const st = this.station(stationId);
+    if (!st) return null;
+    return this.q<{ id: string }>(
+      `SELECT DISTINCT COALESCE(s.parent_station, s.stop_id) AS id
+       FROM json_each($from) AS sid
+       CROSS JOIN stop_times a ON a.stop_id = sid.value
+       CROSS JOIN stop_times b ON b.trip_id = a.trip_id AND b.stop_sequence > a.stop_sequence
+       JOIN stops s ON s.stop_id = b.stop_id
+       WHERE COALESCE(a.pickup_type, 0) <> 1
+         AND COALESCE(b.drop_off_type, 0) <> 1`,
+    )
+      .all({ $from: JSON.stringify(st.stopIds) })
+      .map((r) => r.id)
+      .filter((id) => id !== st.station.id);
+  }
+
   /** Departures from a station in [now - lookback, now + window], sorted by planned time. */
   departures(
     stationId: string,
