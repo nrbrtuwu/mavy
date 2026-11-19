@@ -264,7 +264,9 @@ export class VonatinfoSource implements LiveSource {
   private readonly now: () => number;
 
   constructor(opts: VonatinfoOptions = {}) {
-    this.cache = opts.cache ?? new LiveCache({ ttlMs: 45_000, minIntervalMs: 1000 });
+    // 250 ms between upstream requests: a route search (2 boards + up to 3 train pages) no
+    // longer queues for seconds, and requests still never arrive as a burst.
+    this.cache = opts.cache ?? new LiveCache({ ttlMs: 45_000, minIntervalMs: 250 });
     this.fetch = opts.fetch ?? ((url, init) => fetch(url, init));
     this.now = opts.now ?? Date.now;
   }
