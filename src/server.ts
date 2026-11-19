@@ -10,7 +10,8 @@ import { DB_PATH } from './gtfs/import.ts';
 import { Timetable } from './gtfs/queries.ts';
 import type { LiveSource } from './live/types.ts';
 import { VonatinfoSource } from './live/vonatinfo.ts';
-import { isLiveRelevant, liveTrainNumber, mergeConnections, mergeDepartures, mergeTrip, safeLive } from './merge.ts';
+import { planJourneys } from './gtfs/planner.ts';
+import { directIsBetter, isLiveRelevant, liveTrainNumber, mergeConnections, mergeJourney, mergeDepartures, mergeTrip, safeLive } from './merge.ts';
 import { parseServiceDate, parseUserTime } from './time.ts';
 
 /** Planned departures this far back are fetched too, so delayed trains still show. */
@@ -165,31 +166,6 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
     return reply.type('application/json; charset=utf-8').send(allStations.body);
   });
 
-  // Stations reachable by a direct train from one station (the route form's "Hová" list).
-  // Depends only on the timetable: cached per import, browsers revalidate with the ETag.
-  const reachable = new Map<string, string>();
-  let reachableEtag = '';
-  app.get<{ Params: { id: string } }>('/api/stations/:id/reachable', async (req, reply) => {
-    const tt = getTimetable();
-    if (!tt) return noTimetable(reply);
-    const etag = `"reachable-${tt.meta().imported_at ?? 'unknown'}"`;
-    if (etag !== reachableEtag) {
-      reachable.clear();
-      reachableEtag = etag;
-    }
-    let body = reachable.get(req.params.id);
-    if (body === undefined) {
-      const ids = tt.reachableFrom(req.params.id);
-      if (!ids) return reply.code(404).send({ error: 'unknown_station' });
-      body = JSON.stringify({ stations: ids });
-      if (reachable.size >= 500) reachable.clear();
-      reachable.set(req.params.id, body);
-    }
-    reply.header('etag', etag).header('cache-control', 'no-cache');
-    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
-    return reply.type('application/json; charset=utf-8').send(body);
-  });
-
   app.get('/api/departures', async (req, reply) => {
     const q = parse(DeparturesQuery, req.query, reply);
     if (!q) return reply;
@@ -237,7 +213,14 @@ export function buildServer(opts: ServerOptions = {}): FastifyInstance {
       const trains = results.flatMap((r) => (r?.data ? [r.data] : []));
       if (trains.length > 0) merged = mergeConnections(planned.connections, liveBoard, opts, arrivalBoard, trains);
     }
-    return { from: planned.from, to: planned.to, live: merged.live, connections: merged.connections };
+    // Trips with changes (journey planner), where no direct train is at least as good.
+    const withChanges = (planJourneys(tt, q.from, q.to, { time, limit: q.limit }) ?? [])
+      .filter((j) => j.legs.length > 1 && !directIsBetter(j, planned.connections))
+      .map((j) => mergeJourney(j, liveBoard));
+    const connections = [...merged.connections, ...withChanges]
+      .sort((a, b) => Date.parse(a.departure.planned) - Date.parse(b.departure.planned))
+      .slice(0, q.limit);
+    return { from: planned.from, to: planned.to, live: merged.live, connections };
   });
 
   app.get<{ Params: { tripId: string } }>('/api/train/:tripId', async (req, reply) => {

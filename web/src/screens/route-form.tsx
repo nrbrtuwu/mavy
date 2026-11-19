@@ -3,7 +3,7 @@ import { cn } from "cn"
 import { ArrowLeftRight, Search, X } from "lucide-react"
 
 import { Screen, ScreenSection } from "@/components/layout"
-import { StationResults, useReachable, useStationSearch } from "@/components/station-picker"
+import { StationResults, useStationSearch } from "@/components/station-picker"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,11 +102,8 @@ export function RouteFormScreen() {
   // The result list belongs to the active slot, and only while that slot has no station.
   const activeEmpty = active === "from" ? !from : !to
   const activeQuery = active === "from" ? fromQuery : toQuery
-  // Hová: only stations a direct train from Honnan reaches (all of them until that list loads).
-  const reachable = useReachable(from?.id ?? null)
-  const only = active === "to" ? reachable.set : null
-  const unfiltered = active === "to" && !!from && reachable.failed
-  const search = useStationSearch(activeQuery, only)
+  // Every station: the journey planner finds trips with changes too.
+  const search = useStationSearch(activeQuery)
   const recordStationPick = useRecordStationPick()
 
   /** Focus a slot's input once it is rendered (it may just have replaced the picked chip). */
@@ -205,18 +202,7 @@ export function RouteFormScreen() {
           </div>
           {/* Results for the slot being typed in, full width below both. */}
           {activeEmpty && (
-            <StationResults
-              search={search}
-              onPick={pick}
-              note={
-                only && from
-                  ? `Közvetlen vonattal elérhető innen: ${from.name}`
-                  : unfiltered
-                    ? "Nem sikerült betölteni, hova megy közvetlen vonat: minden állomás látszik"
-                    : null
-              }
-              empty={only && from ? `Nincs ilyen állomás közvetlen vonattal innen: ${from.name}` : undefined}
-            />
+            <StationResults search={search} onPick={pick} />
           )}
           <div className="flex flex-col gap-2">
             <label htmlFor="ido" className="text-sm font-medium">

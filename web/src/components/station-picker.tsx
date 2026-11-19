@@ -8,11 +8,8 @@ import { api, errorMessage } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { forgetStation, frequentFirst, useTopStations } from "@/lib/frequent-stations"
 import {
-  loadReachable,
   loadStationList,
   onStationListLoaded,
-  reachableFailedFor,
-  reachableFrom,
   searchStationsLocal,
   stationList,
 } from "@/lib/stations"
@@ -20,25 +17,6 @@ import type { Station, StationsResponse } from "@/lib/types"
 
 /** Server search results kept in memory (only used until the station list has loaded). */
 const resultCache = new Map<string, Station[]>()
-
-/**
- * Stations a direct train reaches from `stationId`: `set` is null with no station, while
- * loading, or when loading failed (`failed`).
- */
-export function useReachable(stationId: string | null): { set: ReadonlySet<string> | null; failed: boolean } {
-  const [, setLoaded] = useState(0)
-  useEffect(() => {
-    if (!stationId) return
-    let alive = true
-    void loadReachable(stationId).then(() => alive && setLoaded((n) => n + 1))
-    return () => {
-      alive = false
-    }
-  }, [stationId])
-  if (!stationId) return { set: null, failed: false }
-  const set = reachableFrom(stationId)
-  return { set, failed: !set && reachableFailedFor(stationId) }
-}
 
 export interface StationSearch {
   stations: Station[] | null
@@ -51,9 +29,8 @@ export interface StationSearch {
  * Station search. With the station list loaded (normally right after start-up): instant,
  * in memory, no request per keystroke. Until then: debounced server search.
  * Empty query: the device's most picked stations. stations = null for a one-letter query.
- * `only`: allowed station ids (e.g. reachable by a direct train), null = all.
  */
-export function useStationSearch(query: string, only: ReadonlySet<string> | null = null): StationSearch {
+export function useStationSearch(query: string): StationSearch {
   const top = useTopStations()
   const [result, setResult] = useState<{ q: string; stations: Station[] | null; error: string | null }>({
     q: "",
@@ -62,11 +39,7 @@ export function useStationSearch(query: string, only: ReadonlySet<string> | null
   })
   const q = query.trim()
   const local = useSyncExternalStore(onStationListLoaded, stationList)
-  const allowed = useMemo(() => (only ? (s: Station) => only.has(s.id) : () => true), [only])
-  const localResults = useMemo(
-    () => (local && q.length >= 2 ? searchStationsLocal(local, q, 20, only) : null),
-    [local, q, only],
-  )
+  const localResults = useMemo(() => (local && q.length >= 2 ? searchStationsLocal(local, q) : null), [local, q])
 
   useEffect(() => {
     void loadStationList()
@@ -91,9 +64,9 @@ export function useStationSearch(query: string, only: ReadonlySet<string> | null
     }
   }, [local, q])
 
-  const ranked = (list: Station[]) => frequentFirst(list.filter(allowed), top)
+  const ranked = (list: Station[]) => frequentFirst(list, top)
   if (q === "") {
-    const frequent = top.filter(allowed)
+    const frequent = top
     return { stations: frequent.length ? frequent : null, error: null, frequent: true }
   }
   if (q.length < 2) return { stations: null, error: null, frequent: false }

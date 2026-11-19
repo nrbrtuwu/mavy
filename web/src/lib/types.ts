@@ -37,6 +37,16 @@ export interface Departure extends TrainInfo {
   live: LiveState
 }
 
+/** One train of a trip with changes. */
+export interface Leg extends TrainInfo {
+  from: Station
+  to: Station
+  departure: TimeInfo
+  arrival: TimeInfo
+  fromPlatform: string | null
+  toPlatform: string | null
+}
+
 export interface Connection extends TrainInfo {
   departure: TimeInfo
   arrival: TimeInfo
@@ -48,6 +58,8 @@ export interface Connection extends TrainInfo {
   cancelled: boolean
   reason: string | null
   live: LiveState
+  /** Trips with changes: every train in order (the first one has live data). Absent = direct. */
+  legs?: Leg[]
 }
 
 export interface Stop {
@@ -88,7 +100,3 @@ export interface StationsResponse {
   stations: Station[]
 }
 
-/** GET /api/stations/:id/reachable */
-export interface StationIdsResponse {
-  stations: string[]
-}

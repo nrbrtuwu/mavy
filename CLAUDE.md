@@ -6,10 +6,10 @@ Users: the owner and a few close friends. Not a public product.
 ## Goals
 
 - Station departure board with live delays
-- Route search: next trains from station A to station B
+- Route search: next trains from station A to station B, direct or with changes (journey planner, `src/gtfs/planner.ts`: connection scan over the timetable, min. 3 min change at the same station; the first train of a trip with changes gets live data, the rest planned times)
 - Train detail: every stop with planned time, expected time, delay
 - Saved favorites (routes and stations), stored on the device
-- Station search: the device's 5 most picked stations shown when the field is empty (each with an X to remove it) and ranked first (`web/src/lib/frequent-stations.ts`); "Hová" only offers stations a direct train reaches from "Honnan"
+- Station search: the device's 5 most picked stations shown when the field is empty (each with an X to remove it) and ranked first (`web/src/lib/frequent-stations.ts`)
 - Settings page (last navbar item): start page (default route search), animated background on/off, frequent stations on/off (default on), full screen on/off (default off: the screen's box fills the space under the navbar, edge to edge, on phones and desktop). Stored on the device
 - Installable PWA, works on phones, shows last cached data when offline
 
@@ -70,7 +70,8 @@ src/
   server.ts          Fastify app, routes, static files
   auth.ts            optional shared password (MAVY_PASSWORD)
   gtfs/import.ts     GTFS zip -> SQLite
-  gtfs/queries.ts    departures, route search, trip stops
+  gtfs/queries.ts    departures, route search, trip stops, connection graph
+  gtfs/planner.ts    journey planner (trips with changes)
   live/cache.ts      shared 45 s cache, request pacing, exponential backoff (no MÁV knowledge)
   live/types.ts      LiveSource interface, LiveTrain, LiveStop, delay + reason types
   live/vonatinfo.ts  live client: vonatinfo.mav.hu TRAIN/STATION HTML -> LiveTrain/LiveBoard
@@ -94,7 +95,6 @@ docs/live-api/       captured request/response samples
 ## API (own backend)
 
 - `GET /api/stations?q=` station search
-- `GET /api/stations/:id/reachable` station ids a direct train reaches from this one (route form's "Hová" list)
 - `GET /api/departures?station=&limit=` board with delays
 - `GET /api/route?from=&to=&time=` next trains between two stations
 - `GET /api/train/:tripId` all stops, planned vs expected

@@ -5,6 +5,7 @@
 // time and delay are null when there is no live data for it ("no live data").
 
 import { normalizeName } from './gtfs/import.ts';
+import type { PlannedJourney, PlannedLeg } from './gtfs/planner.ts';
 import type { PlannedConnection, PlannedDeparture, PlannedStop, PlannedTrip, TrainInfo } from './gtfs/queries.ts';
 import type { LiveArrival, LiveBoard, LiveDeparture, LiveResult, LiveSource, LiveStop, LiveTrain, TrainRef } from './live/types.ts';
 import { addDays, localDate, toIso } from './time.ts';
@@ -37,6 +38,12 @@ export interface MergedDeparture extends TrainInfo {
   live: LiveState;
 }
 
+/** One train of a trip with changes (planned times; see mergeJourney). */
+export interface MergedLeg extends Omit<PlannedLeg, 'departure' | 'arrival'> {
+  departure: TimeInfo;
+  arrival: TimeInfo;
+}
+
 export interface MergedConnection extends TrainInfo {
   departure: TimeInfo;
   /** Expected arrival: the source's prediction at the arrival station, else the departure delay carried over. */
@@ -49,6 +56,8 @@ export interface MergedConnection extends TrainInfo {
   cancelled: boolean;
   reason: string | null;
   live: LiveState;
+  /** Trips with changes: every train, in order (absent for a direct train). */
+  legs?: MergedLeg[];
 }
 
 export interface MergedStop {
@@ -390,4 +399,43 @@ export async function safeLive<T>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ---------------------------------------------------------------- trips with changes
+
+/**
+ * A trip with changes from the journey planner. The first train gets live data from the
+ * departure station's board (like a direct train); the others keep planned times, because
+ * live data for every change station would mean more upstream requests.
+ */
+export function mergeJourney(j: PlannedJourney, live: LiveResult<LiveBoard | null> | null): MergedConnection {
+  const first = j.legs[0]!;
+  const last = j.legs.at(-1)!;
+  const firstAsConnection: PlannedConnection = {
+    tripId: first.tripId,
+    serviceDate: first.serviceDate,
+    trainNumber: first.trainNumber,
+    label: first.label,
+    headsign: first.headsign,
+    departure: first.departure,
+    arrival: first.arrival,
+    durationMin: Math.round((Date.parse(first.arrival) - Date.parse(first.departure)) / 60000),
+    fromPlatform: first.fromPlatform,
+    toPlatform: first.toPlatform,
+  };
+  const m = mergeConnections([firstAsConnection], live, { from: 0, limit: 1 }).connections[0]!;
+  return {
+    ...m,
+    arrival: noLive(j.arrival),
+    durationMin: j.durationMin,
+    toPlatform: last.toPlatform,
+    legs: j.legs.map((l) => ({ ...l, departure: noLive(l.departure), arrival: noLive(l.arrival) })),
+  };
+}
+
+/** A direct train leaving no earlier and arriving no later makes a trip with changes pointless. */
+export function directIsBetter(j: PlannedJourney, direct: PlannedConnection[]): boolean {
+  const dep = Date.parse(j.departure);
+  const arr = Date.parse(j.arrival);
+  return direct.some((d) => Date.parse(d.departure) >= dep && Date.parse(d.arrival) <= arr);
 }

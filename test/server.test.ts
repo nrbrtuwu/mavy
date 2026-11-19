@@ -59,16 +59,6 @@ describe('api', () => {
     expect(again.statusCode).toBe(304);
   });
 
-  it('/api/stations/:id/reachable: direct-train destinations, revalidated with an ETag', async () => {
-    const res = await get('/api/stations/SZOL/reachable');
-    expect(res.json()).toEqual({ stations: ['DEB'] });
-    const etag = res.headers.etag as string;
-    expect(etag).toMatch(/^"reachable-/);
-    const again = await app.inject({ method: 'GET', url: '/api/stations/SZOL/reachable', headers: { 'if-none-match': etag } });
-    expect(again.statusCode).toBe(304);
-    expect((await get('/api/stations/NOPE/reachable')).statusCode).toBe(404);
-  });
-
   it('/api/departures', async () => {
     const res = await get('/api/departures?station=BPK&limit=2');
     expect(res.statusCode).toBe(200);

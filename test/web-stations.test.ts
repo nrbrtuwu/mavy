@@ -55,18 +55,3 @@ describe('local station search', () => {
     }
   });
 });
-
-describe('direct-train filter', () => {
-  test('search keeps only the allowed stations', () => {
-    expect(searchStationsLocal(sample, 'gyor', 20, new Set(['D'])).map((s) => s.id)).toEqual(['D']);
-    expect(searchStationsLocal(sample, 'gyor', 20, new Set()).map((s) => s.id)).toEqual([]);
-  });
-
-  test('reachableFrom: stations after this one on a trip, from platforms too', () => {
-    expect(tt.reachableFrom('BPK')!.sort()).toEqual(['DEB', 'GYOR', 'SZOL']);
-    expect(tt.reachableFrom('BPK_1')!.sort()).toEqual(['DEB', 'GYOR', 'SZOL']);
-    expect(tt.reachableFrom('SZOL')).toEqual(['DEB']);
-    expect(tt.reachableFrom('DEB')).toEqual([]);
-    expect(tt.reachableFrom('NOPE')).toBeNull();
-  });
-});

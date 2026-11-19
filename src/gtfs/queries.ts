@@ -51,7 +51,7 @@ export interface PlannedTrip extends TrainInfo {
   stops: PlannedStop[];
 }
 
-interface TrainRow {
+export interface TrainRow {
   trip_id: string;
   trip_short_name: string | null;
   trip_headsign: string | null;
@@ -105,17 +105,44 @@ function trainInfo(row: TrainRow, serviceDate: string): TrainInfo {
 }
 
 /** Service dates whose trips can have times inside [from, to]. Trips run up to ~48h after day start. */
-function datesCovering(from: number, to: number): string[] {
+export function datesCovering(from: number, to: number): string[] {
   const dates: string[] = [];
   const last = localDate(to);
   for (let d = addDays(localDate(from), -1); d <= last; d = addDays(d, 1)) dates.push(d);
   return dates;
 }
 
+export const NO_BOARDING = 1;
+export const NO_ALIGHTING = 2;
+
+/**
+ * Every trip's stop-to-stop hops ("connections"), sorted by departure, as parallel arrays.
+ * Times are seconds after the trip's service-day start (can exceed 24 h). Stations are the
+ * top-level stops; fromStop/toStop are the actual stop (platform) indexes.
+ */
+export interface ConnectionGraph {
+  stationIds: string[];
+  stationNames: string[];
+  /** Any stop_id (station or platform) -> station index. */
+  stationOf: Map<string, number>;
+  stopPlatform: (string | null)[];
+  trips: { serviceId: string; row: TrainRow }[];
+  dep: Int32Array;
+  arr: Int32Array;
+  from: Int32Array;
+  to: Int32Array;
+  fromStop: Int32Array;
+  toStop: Int32Array;
+  trip: Int32Array;
+  /** NO_BOARDING / NO_ALIGHTING bits. */
+  flags: Uint8Array;
+}
+
 export class Timetable {
   private readonly db: Database;
   private readonly stmts = new Map<string, Statement>();
   private readonly services = new Map<string, { json: string; set: Set<string> }>();
+  private graph: ConnectionGraph | null = null;
 
   constructor(path: string) {
     this.db = new Database(path, { readonly: true });
@@ -205,27 +232,6 @@ export class Timetable {
       .all({ $id: row.stop_id })
       .map((r) => r.stop_id);
     return { station: { id: row.stop_id, name: row.stop_name }, stopIds };
-  }
-
-  /**
-   * Stations a direct train goes to from this station (boarding here, getting off there,
-   * on any day of the feed), as top-level station ids. Same pickup/drop-off rules as route().
-   */
-  reachableFrom(stationId: string): string[] | null {
-    const st = this.station(stationId);
-    if (!st) return null;
-    return this.q<{ id: string }>(
-      `SELECT DISTINCT COALESCE(s.parent_station, s.stop_id) AS id
-       FROM json_each($from) AS sid
-       CROSS JOIN stop_times a ON a.stop_id = sid.value
-       CROSS JOIN stop_times b ON b.trip_id = a.trip_id AND b.stop_sequence > a.stop_sequence
-       JOIN stops s ON s.stop_id = b.stop_id
-       WHERE COALESCE(a.pickup_type, 0) <> 1
-         AND COALESCE(b.drop_off_type, 0) <> 1`,
-    )
-      .all({ $from: JSON.stringify(st.stopIds) })
-      .map((r) => r.id)
-      .filter((id) => id !== st.station.id);
   }
 
   /** Departures from a station in [now - lookback, now + window], sorted by planned time. */
@@ -350,6 +356,101 @@ export class Timetable {
     }
     found.sort((x, y) => x.at - y.at);
     return { from: a.station, to: b.station, connections: found.slice(0, limit).map((f) => f.c) };
+  }
+
+  /** Every trip's stop-to-stop hops, for the journey planner (planner.ts). Built once per database. */
+  connectionGraph(): ConnectionGraph {
+    if (this.graph) return this.graph;
+    const stations = this.q<{ stop_id: string; stop_name: string; parent_station: string | null; platform_code: string | null }>(
+      'SELECT stop_id, stop_name, parent_station, platform_code FROM stops',
+    ).all({});
+    const stationIds: string[] = [];
+    const stationNames: string[] = [];
+    const stationOf = new Map<string, number>(); // any stop_id (station or platform) -> station index
+    const top = new Map<string, number>();
+    for (const s of stations) {
+      if (s.parent_station) continue;
+      top.set(s.stop_id, stationIds.length);
+      stationIds.push(s.stop_id);
+      stationNames.push(s.stop_name);
+    }
+    const stopIds: string[] = [];
+    const stopIndex = new Map<string, number>();
+    const stopPlatform: (string | null)[] = [];
+    for (const s of stations) {
+      const st = top.get(s.parent_station ?? s.stop_id);
+      if (st === undefined) continue;
+      stationOf.set(s.stop_id, st);
+      stopIndex.set(s.stop_id, stopIds.length);
+      stopIds.push(s.stop_id);
+      stopPlatform.push(s.platform_code);
+    }
+
+    const tripRows = this.q<TrainRow & { service_id: string }>(
+      `SELECT ${TRAIN_COLUMNS}, t.service_id FROM trips t LEFT JOIN routes r ON r.route_id = t.route_id`,
+    ).all({});
+    const tripIndex = new Map<string, number>();
+    tripRows.forEach((t, i) => tripIndex.set(t.trip_id, i));
+
+    const rows = this.q<{
+      trip_id: string;
+      stop_id: string;
+      arrival_time: number | null;
+      departure_time: number | null;
+      pickup_type: number | null;
+      drop_off_type: number | null;
+    }>(
+      `SELECT trip_id, stop_id, arrival_time, departure_time, pickup_type, drop_off_type
+       FROM stop_times ORDER BY trip_id, stop_sequence`,
+    ).all({});
+    const list: { dep: number; arr: number; from: number; to: number; fromStop: number; toStop: number; trip: number; flags: number }[] = [];
+    for (let i = 0; i + 1 < rows.length; i++) {
+      const a = rows[i]!;
+      const b = rows[i + 1]!;
+      if (a.trip_id !== b.trip_id) continue;
+      const dep = a.departure_time ?? a.arrival_time;
+      const arr = b.arrival_time ?? b.departure_time;
+      const trip = tripIndex.get(a.trip_id);
+      const from = stationOf.get(a.stop_id);
+      const to = stationOf.get(b.stop_id);
+      if (dep === null || arr === null || trip === undefined || from === undefined || to === undefined) continue;
+      const flags = (a.pickup_type === 1 ? NO_BOARDING : 0) | (b.drop_off_type === 1 ? NO_ALIGHTING : 0);
+      list.push({ dep, arr, from, to, fromStop: stopIndex.get(a.stop_id)!, toStop: stopIndex.get(b.stop_id)!, trip, flags });
+    }
+    list.sort((x, y) => x.dep - y.dep);
+    const n = list.length;
+    const g: ConnectionGraph = {
+      stationIds,
+      stationNames,
+      stationOf,
+      stopPlatform,
+      trips: tripRows.map((t) => ({ serviceId: t.service_id, row: t })),
+      dep: new Int32Array(n),
+      arr: new Int32Array(n),
+      from: new Int32Array(n),
+      to: new Int32Array(n),
+      fromStop: new Int32Array(n),
+      toStop: new Int32Array(n),
+      trip: new Int32Array(n),
+      flags: new Uint8Array(n),
+    };
+    list.forEach((c, i) => {
+      g.dep[i] = c.dep;
+      g.arr[i] = c.arr;
+      g.from[i] = c.from;
+      g.to[i] = c.to;
+      g.fromStop[i] = c.fromStop;
+      g.toStop[i] = c.toStop;
+      g.trip[i] = c.trip;
+      g.flags[i] = c.flags;
+    });
+    this.graph = g;
+    return g;
+  }
+
+  /** Train info for a trip of the connection graph on a service date. */
+  graphTrainInfo(row: TrainRow, serviceDate: string): TrainInfo {
+    return trainInfo(row, serviceDate);
   }
 
   /**
