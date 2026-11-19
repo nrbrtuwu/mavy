@@ -66,7 +66,7 @@ describe('format', () => {
     expect(platformText('4a')).toBe('4a vágány');
     expect(platformText(null)).toBe('');
     expect(liveText({ state: 'none', fetchedAt: null })).toContain('Nincs élő késésadat');
-    expect(liveText({ state: 'stale', fetchedAt: '2026-11-12T05:54:40.000Z' })).toBe('Az élő adat nem friss (utoljára 06:54)');
+    expect(liveText({ state: 'stale', fetchedAt: '2026-11-12T05:54:40.000Z' })).toBe('Utolsó élő adat 06:54, frissíteni nem sikerült');
   });
 
   test('trainCategory: IC yellow, S-lines and Sz blue, RJX red, IR green, the rest neutral', () => {

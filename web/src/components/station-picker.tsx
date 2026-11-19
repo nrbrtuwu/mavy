@@ -106,12 +106,15 @@ export function useStationSearch(query: string, only: ReadonlySet<string> | null
 
 export function SearchInput({
   id,
+  label,
   value,
   onChange,
   placeholder,
   autoFocus,
 }: {
   id: string
+  /** For screen readers only (no visible label). */
+  label: string
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -122,6 +125,7 @@ export function SearchInput({
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
       <Input
         id={id}
+        aria-label={label}
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -181,7 +185,7 @@ function StationList({
 }) {
   const Icon = frequent ? History : MapPin
   return (
-    <ul className="divide-y overflow-hidden rounded-xl ring-1 ring-foreground/10">
+    <ul className="divide-y overflow-hidden rounded-lg ring-1 ring-foreground/10">
       {stations.map((s) => {
         const content = (
           <>

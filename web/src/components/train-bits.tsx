@@ -258,8 +258,9 @@ export function LiveStatus({
       {(live.state !== "none" || savedAt !== null) && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Radio className={cn("size-3.5", live.state === "live" && savedAt === null && "text-foreground")} aria-hidden />
-          {savedAt !== null ? `Az élő adat nem friss (utoljára ${clock(savedAt)})` : liveText(live)}
-          {dataTime !== null && savedAt === null && ` · Frissítve ${clock(dataTime)}`}
+          {savedAt !== null ? `Utolsó élő adat ${clock(savedAt)}, frissíteni nem sikerült` : liveText(live)}
+          {/* "Frissítve": when this page last got an answer. With stale delays that is not the delays' time. */}
+          {dataTime !== null && savedAt === null && (live.state === "stale" ? ` · Lekérve ${clock(dataTime)}` : ` · Frissítve ${clock(dataTime)}`)}
         </p>
       )}
     </div>

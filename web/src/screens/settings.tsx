@@ -1,5 +1,3 @@
-import { Check } from "lucide-react"
-
 import { Screen, ScreenSection } from "@/components/layout"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -10,13 +8,10 @@ import { START_PAGES, updateSettings, useSettings, type StartPage } from "@/lib/
 export function SettingsScreen() {
   const settings = useSettings()
   return (
-    <Screen title="Beállítások" description="Ezen az eszközön tárolódnak, a telepített alkalmazásban is megmaradnak">
+    <Screen title="Beállítások">
       <Separator />
       <ScreenSection className="pt-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-medium">Kezdőoldal</h2>
-          <p className="text-sm text-muted-foreground">Ez nyílik meg, amikor elindítod a Mávyt.</p>
-        </div>
+        <h2 className="font-medium">Kezdőoldal</h2>
         <RadioGroup
           value={settings.startPage}
           onValueChange={(value) => updateSettings({ startPage: value as StartPage })}
@@ -29,11 +24,7 @@ export function SettingsScreen() {
               className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
             >
               <RadioGroupItem id={`start-${page.value}`} value={page.value} />
-              <span className="flex flex-1 flex-col gap-0.5">
-                <span className="font-medium">{page.label}</span>
-                <span className="text-xs font-normal text-muted-foreground">{page.description}</span>
-              </span>
-              {settings.startPage === page.value && <Check className="size-4 text-muted-foreground" aria-hidden />}
+              <span className="flex-1 font-medium">{page.label}</span>
             </Label>
           ))}
         </RadioGroup>
@@ -76,7 +67,7 @@ export function SettingsScreen() {
           <span className="flex flex-col gap-1">
             <span className="font-medium">Teljes képernyő</span>
             <span className="text-xs font-normal text-muted-foreground">
-              A középső doboz kitölti a képernyőt a menüsor alatt, telefonon és gépen is.
+              A középső doboz kitölti a képernyőt a menüsor alatt, telefonon és gépen is
             </span>
           </span>
           <Switch

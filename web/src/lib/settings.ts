@@ -18,10 +18,10 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = { startPage: "route", animatedBackground: true, frequentStations: true, fullScreen: false }
 
-export const START_PAGES: { value: StartPage; label: string; description: string }[] = [
-  { value: "route", label: "Útvonal", description: "Keresés két állomás között" },
-  { value: "station", label: "Állomás", description: "Indulási tábla keresése" },
-  { value: "favorites", label: "Kedvencek", description: "Mentett állomások és útvonalak" },
+export const START_PAGES: { value: StartPage; label: string }[] = [
+  { value: "route", label: "Útvonal" },
+  { value: "station", label: "Állomás" },
+  { value: "favorites", label: "Kedvencek" },
 ]
 
 const KEY = "mavy.settings.v1"

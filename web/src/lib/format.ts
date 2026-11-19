@@ -154,7 +154,8 @@ export function shortTrainLabel(label: string): string {
 export function liveText(live: LiveInfo): string {
   if (live.state === "live") return "Élő késésadat"
   if (live.state === "stale") {
-    return `Az élő adat nem friss (utoljára ${live.fetchedAt ? clock(live.fetchedAt) : "?"})`
+    // The server could not reach the live source and serves its last copy.
+    return `Utolsó élő adat ${live.fetchedAt ? clock(live.fetchedAt) : "?"}, frissíteni nem sikerült`
   }
   return "Nincs élő késésadat, a menetrend szerinti idők láthatók"
 }

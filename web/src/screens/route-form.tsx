@@ -154,13 +154,13 @@ export function RouteFormScreen() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!from || !to) return setMessage("Válaszd ki az indulási és a célállomást a listából.")
-    if (from.id === to.id) return setMessage("Az indulási és a célállomás ugyanaz.")
+    if (!from || !to) return setMessage("Válaszd ki az indulási és a célállomást a listából")
+    if (from.id === to.id) return setMessage("Az indulási és a célállomás ugyanaz")
     window.location.hash = href.route(from.id, to.id, time || null)
   }
 
   return (
-    <Screen title="Útvonal" description="Közvetlen vonatok két állomás között">
+    <Screen title="Útvonal">
       <ScreenSection className={cn(fullScreen && "max-sm:min-h-full")}>
         <form onSubmit={submit} className={cn("flex flex-col gap-4", fullScreen && "max-sm:flex-1")}>
           {/* Honnan [⇄] Hová */}

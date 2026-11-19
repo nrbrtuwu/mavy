@@ -10,12 +10,9 @@ export function StationSearchScreen() {
   const search = useStationSearch(query)
   const recordStationPick = useRecordStationPick()
   return (
-    <Screen title="Állomás keresése" description="Írd be az állomás nevét, ékezetek nélkül is megy">
+    <Screen title="Állomás keresése">
       <ScreenSection>
-        <label htmlFor="q" className="sr-only">
-          Állomás neve
-        </label>
-        <SearchInput id="q" value={query} onChange={setQuery} placeholder="pl. Keleti, Győr" autoFocus />
+        <SearchInput id="q" label="Állomás neve" value={query} onChange={setQuery} placeholder="pl. Keleti, Győr" autoFocus />
         <StationResults search={search} onPick={recordStationPick} hrefFor={(s) => href.board(s.id)} />
       </ScreenSection>
     </Screen>

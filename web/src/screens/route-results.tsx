@@ -44,7 +44,7 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
   return (
     <Screen
         title={<RouteName from={data.from.name} to={data.to.name} />}
-        description={time ? `Indulás ${time} után` : "Következő közvetlen vonatok"}
+        description={time ? `Indulás ${time} után` : undefined}
         actions={
           <>
             <FavoriteButton favorite={{ type: "route", from: data.from, to: data.to }} />
@@ -73,7 +73,7 @@ export function RouteResultsScreen({ from, to, time }: { from: string; to: strin
       </ScreenSection>
       {data.connections.length === 0 ? (
         <ScreenSection>
-          <p className="text-sm text-muted-foreground">Nincs közvetlen vonat a következő 24 órában.</p>
+          <p className="text-sm text-muted-foreground">Nincs közvetlen vonat a következő 24 órában</p>
         </ScreenSection>
       ) : (
         <ScreenList>

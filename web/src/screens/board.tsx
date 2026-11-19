@@ -31,7 +31,6 @@ export function BoardScreen({ stationId }: { stationId: string }) {
   return (
     <Screen
       title={data.station.name}
-      description="Induló vonatok"
       actions={<FavoriteButton favorite={{ type: "station", id: data.station.id, name: data.station.name }} />}
     >
       <ScreenSection>
@@ -44,7 +43,7 @@ export function BoardScreen({ stationId }: { stationId: string }) {
       </ScreenSection>
       {data.departures.length === 0 ? (
         <ScreenSection>
-          <p className="text-sm text-muted-foreground">A következő 24 órában nem indul innen vonat.</p>
+          <p className="text-sm text-muted-foreground">A következő 24 órában nem indul innen vonat</p>
         </ScreenSection>
       ) : (
         <ScreenList>
