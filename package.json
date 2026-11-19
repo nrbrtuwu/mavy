@@ -12,6 +12,7 @@
     "dev": "bun scripts/dev.ts",
     "build": "bun run --cwd web build",
     "start": "bun src/server.ts",
+    "deploy": "bun deploy/supervisor.ts",
     "typecheck": "tsc -p tsconfig.json && bun run --cwd web typecheck",
     "import-gtfs": "bun src/gtfs/import.ts",
     "icons": "bun scripts/make-icons.ts",

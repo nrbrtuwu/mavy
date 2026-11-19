@@ -175,3 +175,37 @@ MAVY_PASSWORD='a long passphrase' bun run start
 - Only use it over HTTPS. Over plain http the password and the cookie travel in clear text.
   Behind a proxy on the same machine (tailscale serve, cloudflared, Caddy) the cookie is marked
   `Secure` automatically.
+
+## Hosting on Pelican (automatic deploys)
+
+Adapted from the F1-Calendar project. `deploy/supervisor.ts` owns the public port and proxies
+to the live release. On every push to the branch it builds and tests the new commit in
+`releases/<commit>`, starts it next to the live one and switches traffic once it answers. If the
+build, tests or start fail, the previous release stays live.
+
+1. In the Pelican panel, import `pelican/egg-mavy.json` (Admin → Eggs → Import) and create a
+   server from it.
+2. Set **GitHub Token**: a fine-grained token for this repository only, with *Contents:
+   Read-only* (the repository is private). With *Commit statuses* and *Deployments: Read and
+   write* as well, every commit on GitHub shows its build status and a production deployment.
+3. Install, then upload MÁV's GTFS zip into `data/gtfs/` with the File Manager and press Start.
+   The first start builds, tests and imports the timetable, which takes a few minutes. The console
+   says `Server running on port …` when the site is up.
+4. Put HTTPS in front of the allocation (reverse proxy, Cloudflare, Tailscale) and set
+   **Public URL** to that address.
+
+Keeping it up to date:
+
+- **Code:** just push to `main`. The supervisor checks every 2 minutes (**Deploy Poll
+  Interval**). For deploys within seconds, add a GitHub webhook (Settings → Webhooks) to
+  `<Public URL>/__deploy/github`, content type `application/json`, the **Deploy Webhook Secret**
+  as secret, push events only.
+- **Timetable:** upload a newer GTFS zip into `data/gtfs/`. Within a minute it is imported and the
+  site restarts on it, also without downtime.
+- **Status:** `<Public URL>/__deploy/status` shows the live commit, the last deploy and the
+  timetable's date.
+- A commit that changes `deploy/` is deployed like any other, but the supervisor itself runs
+  the new code only after a restart in Pelican.
+
+The data folder (`DATA_DIR`, default `./data`) holds `mavy.db`, the GTFS upload and the badge
+font, outside the releases, so deploys and reinstalls never touch it.

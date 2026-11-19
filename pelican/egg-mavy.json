@@ -1,0 +1,195 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL",
+    "meta": {
+        "version": "PLCN_v3",
+        "update_url": null
+    },
+    "exported_at": "2026-11-19T20:00:00+00:00",
+    "name": "Mávy",
+    "author": "github.com/nrbrtuwu",
+    "uuid": "5b0f7c1e-6a2d-4c8e-9f31-2d7a4b6e8c90",
+    "description": "Mávy: a private MÁV / GYSEV train tracker PWA (timetable plus live delays), running on Bun. Pushes to the Git branch are deployed automatically with no downtime: the new commit is built and tested next to the live site and traffic switches over once it is healthy. Upload MÁV's GTFS zip into the data folder's gtfs/ to load or update the timetable. Put a reverse proxy with HTTPS in front of the allocation (the app installs and works offline only over HTTPS).",
+    "icon": null,
+    "tags": [
+        "mav",
+        "train",
+        "pwa",
+        "bun"
+    ],
+    "features": [],
+    "docker_images": {
+        "Bun Latest": "ghcr.io/pelican-eggs/yolks:bun_latest"
+    },
+    "file_denylist": [],
+    "startup_commands": {
+        "Default": "bun deploy/supervisor.ts"
+    },
+    "config": {
+        "files": "{}",
+        "startup": "{\n    \"done\": \"Server running on port\"\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\n# Mávy installation script\n# Server files: /mnt/server\n# This only fetches the code. deploy/supervisor.ts builds, tests and starts a release on first start\n# and keeps it up to date afterwards, so a reinstall is only needed to reset the checkout.\nset -e\n\napt-get update -qq\napt-get install -y -qq git ca-certificates > /dev/null\n\nREPO=\"${GIT_REPO:-https://github.com/nrbrtuwu/mavy.git}\"\nBRANCH=\"${GIT_BRANCH:-main}\"\nDATA=\"${DATA_DIR:-./data}\"\n\n# A private repository needs the token. It is sent as a one-off header and never saved in the checkout.\nAUTH=()\nif [ -n \"${GITHUB_TOKEN}\" ]; then\n    BASIC=$(printf 'x-access-token:%s' \"${GITHUB_TOKEN}\" | base64 -w0)\n    AUTH=(-c \"http.https://github.com/.extraheader=AUTHORIZATION: basic ${BASIC}\")\nfi\n\nmkdir -p /mnt/server\ncd /mnt/server\ngit config --global --add safe.directory /mnt/server\n\nif [ -d .git ]; then\n    echo \"Updating existing Mávy checkout from ${REPO} (${BRANCH})\"\n    git remote set-url origin \"${REPO}\"\n    # Full history: the build number is the commit count.\n    git \"${AUTH[@]}\" fetch --unshallow origin \"${BRANCH}\" 2>/dev/null || git \"${AUTH[@]}\" fetch origin \"${BRANCH}\"\n    git reset --hard FETCH_HEAD\nelse\n    echo \"Cloning Mávy from ${REPO} (${BRANCH})\"\n    rm -rf /tmp/mavy\n    git \"${AUTH[@]}\" clone --branch \"${BRANCH}\" \"${REPO}\" /tmp/mavy\n    cp -a /tmp/mavy/. /mnt/server/\n    rm -rf /tmp/mavy\nfi\n\n# The data folder holds the timetable database, the GTFS upload and the badge font.\n# It is git ignored, so updates never touch it.\nmkdir -p \"${DATA}/gtfs\"\n\n# Releases are built in releases/<commit>; dependencies and builds in the root are not used.\nrm -rf node_modules web/node_modules dist\n\ntest -f deploy/supervisor.ts\n\necho \"-----------------------------------------\"\necho \"Mávy installation completed\"\necho \"Upload MÁV's GTFS zip into ${DATA}/gtfs/ (File Manager), then press Start.\"\necho \"The first start builds and tests the app and imports the timetable, which takes a few minutes.\"\necho \"-----------------------------------------\"\n",
+            "container": "oven/bun:1-debian",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "sort": 1,
+            "name": "Public URL",
+            "description": "The public address of the site without a trailing slash, for example https://mavy.example.com. Used for the links in GitHub's deploy statuses; leave empty if there is none.",
+            "env_variable": "PUBLIC_URL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "url"
+            ]
+        },
+        {
+            "sort": 2,
+            "name": "Password",
+            "description": "Shared password for the site (MAVY_PASSWORD). Leave empty when access is already limited, e.g. by Tailscale or Cloudflare Access.",
+            "env_variable": "MAVY_PASSWORD",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:256"
+            ]
+        },
+        {
+            "sort": 3,
+            "name": "Live Delays",
+            "description": "Live delays from vonatinfo.mav.hu. Set to off to show planned times only.",
+            "env_variable": "MAVY_LIVE",
+            "default_value": "on",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:on,off"
+            ]
+        },
+        {
+            "sort": 4,
+            "name": "Data Directory",
+            "description": "Folder for the timetable database, the GTFS upload (gtfs/) and the badge font, relative to the server root. Reinstalling and deploys leave it untouched.",
+            "env_variable": "DATA_DIR",
+            "default_value": "./data",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:255",
+                "regex:/^[^\\/]/"
+            ]
+        },
+        {
+            "sort": 5,
+            "name": "Git Repository",
+            "description": "Repository to install and update from.",
+            "env_variable": "GIT_REPO",
+            "default_value": "https://github.com/nrbrtuwu/mavy.git",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": [
+                "required",
+                "string"
+            ]
+        },
+        {
+            "sort": 6,
+            "name": "Git Branch",
+            "description": "Branch to install from and deploy automatically on every push.",
+            "env_variable": "GIT_BRANCH",
+            "default_value": "main",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": [
+                "required",
+                "string"
+            ]
+        },
+        {
+            "sort": 7,
+            "name": "GitHub Token",
+            "description": "Fine-grained GitHub token for this repository only. Contents: Read-only is needed because the repository is private. Add Commit statuses and Deployments: Read and write to show build status next to each commit on GitHub.",
+            "env_variable": "GITHUB_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:255"
+            ]
+        },
+        {
+            "sort": 8,
+            "name": "GitHub Status",
+            "description": "Show build status next to each commit and a production deployment on GitHub (needs the token's Commit statuses and Deployments permissions).",
+            "env_variable": "GITHUB_STATUS",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ]
+        },
+        {
+            "sort": 9,
+            "name": "Automatic Deploys",
+            "description": "Deploy every push to the Git branch without downtime. Set to false to stay on the installed commit.",
+            "env_variable": "AUTO_DEPLOY",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ]
+        },
+        {
+            "sort": 10,
+            "name": "Deploy Webhook Secret",
+            "description": "Secret of the GitHub webhook pointing at PUBLIC_URL/__deploy/github, so pushes deploy within seconds. Leave empty to rely on polling only.",
+            "env_variable": "DEPLOY_WEBHOOK_SECRET",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:256"
+            ]
+        },
+        {
+            "sort": 11,
+            "name": "Deploy Poll Interval",
+            "description": "How often, in seconds, to check the branch for new commits in case a webhook is missed. 0 turns polling off.",
+            "env_variable": "DEPLOY_POLL_SECONDS",
+            "default_value": "120",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "min:0",
+                "max:86400"
+            ]
+        }
+    ]
+}

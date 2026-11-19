@@ -16,3 +16,6 @@ Thumbs.db
 
 # MÁV's badge font: no licence to redistribute, fetch it with `bun run fetch-font`
 web/public/fonts/MNR2007.ttf
+
+# Deploy supervisor (deploy/supervisor.ts): built releases
+/releases/

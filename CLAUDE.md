@@ -26,7 +26,7 @@ Users: the owner and a few close friends. Not a public product.
 - Database: SQLite via Bun's built-in `bun:sqlite` (GTFS timetable). better-sqlite3 does not load under Bun
 - Frontend: React 19 + Tailwind 4 + shadcn/ui (radix-nova style, neutral base) in `web/`, built with Vite into `dist/public/`. Use shadcn components for every UI element (add new ones with `bunx shadcn@latest add <name>` inside `web/`)
 - PWA: manifest.webmanifest + service worker (network first for API, cache first for static files)
-- Hosting: one small VPS or the owner's PC. Access gated by Tailscale or Cloudflare Access, or a shared password as a fallback
+- Hosting: one small VPS or the owner's PC, or a Pelican panel server (`pelican/egg-mavy.json`): `deploy/supervisor.ts` (adapted from the F1-Calendar project) proxies the public port to the live release and deploys every push to `main` with no downtime (build + test in `releases/<sha>`, switch once healthy, GitHub commit statuses with `GITHUB_TOKEN`). Data (`mavy.db`, GTFS upload, badge font) lives in `DATA_DIR`; a newer GTFS zip there is imported and swapped in automatically. Access gated by Tailscale or Cloudflare Access, or a shared password as a fallback
 
 ## Data sources
 
@@ -78,6 +78,8 @@ src/
   merge.ts           planned + live -> what the UI shows
   time.ts            Europe/Budapest time helpers (service days, DST, ISO output)
 test/                bun:test tests, fixtures/gtfs/ = tiny fake feed
+deploy/              Pelican deploy supervisor, GitHub status reporting (lib tested)
+pelican/             Pelican egg
 scripts/dev.ts       runs server + Vite together
 scripts/make-icons.ts  generates web/public/icons/ (SVG + greyscale PNGs)
 scripts/fetch-font.ts  downloads MÁV's MNR2007 badge font (gitignored)
@@ -106,6 +108,7 @@ docs/live-api/       captured request/response samples
 - `bun run dev` API server (3000) + Vite UI with hot reload: open http://localhost:5173
 - `bun run build` build the UI into `dist/public/`
 - `bun run start` serve API + built UI on port 3000 (run `bun run build` first)
+- `bun run deploy` the deploy supervisor (what the Pelican egg runs; see README)
 - `bun run import-gtfs` rebuild SQLite from `data/gtfs/`
 - `bun run typecheck` type-check server and web
 - `bun test` run tests (bun:test, Vitest-compatible API)
