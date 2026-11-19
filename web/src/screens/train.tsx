@@ -1,4 +1,5 @@
-import { useCallback } from "react"
+import { Fragment, useCallback, useEffect, useRef } from "react"
+import { TrainFront } from "lucide-react"
 import { cn } from "cn"
 
 import { RouteArrow } from "@/components/route-arrow"
@@ -10,6 +11,7 @@ import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { serviceDateLabel, timeParts } from "@/lib/format"
 import { href } from "@/lib/router"
+import { currentLeg } from "@/lib/train-position"
 import type { TimeInfo, Trip } from "@/lib/types"
 
 export function TrainScreen({ tripId, date }: { tripId: string; date: string }) {
@@ -20,6 +22,16 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
   const live = useLiveData(`train:${tripId}:${date}`, load)
   const { error, dataTime, savedAt, refreshError } = live
   const t = live.data
+
+  // Where the train is now (live passed stops): a row between two stops, scrolled into view once.
+  const leg = t && t.live.state !== "none" ? currentLeg(t.stops) : null
+  const nowRow = useRef<HTMLTableRowElement>(null)
+  const scrolled = useRef(false)
+  useEffect(() => {
+    if (leg === null || scrolled.current || !nowRow.current) return
+    scrolled.current = true
+    nowRow.current.scrollIntoView({ block: "center" })
+  }, [leg])
 
   if (error) {
     return (
@@ -64,8 +76,9 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {t.stops.map((s) => (
-              <TableRow key={s.sequence} className={cn(s.passed && "text-muted-foreground")}>
+            {t.stops.map((s, i) => (
+              <Fragment key={s.sequence}>
+              <TableRow className={cn(s.passed && "text-muted-foreground")}>
                 <TableCell className="pl-4 whitespace-normal">
                   <a href={href.board(s.stationId)} className="font-medium underline-offset-4 hover:underline">
                     {s.name}
@@ -76,6 +89,17 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
                 <TimeCell time={s.departure} cancelled={s.cancelled} showLive={showLive} />
                 <TableCell className="pr-4 text-right">{s.platform ?? ""}</TableCell>
               </TableRow>
+              {i === leg && (
+                <TableRow ref={nowRow} className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-2 pl-4 whitespace-normal">
+                    <span className="flex items-center gap-1.5 text-xs font-medium">
+                      <TrainFront className="size-3.5" aria-hidden />
+                      Most itt jár: {s.name} és {t.stops[i + 1]!.name} között
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )}
+              </Fragment>
             ))}
           </TableBody>
         </Table>
