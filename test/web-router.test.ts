@@ -19,7 +19,11 @@ describe('parseHash', () => {
       name: 'train',
       tripId: '36321470_2547.',
       date: '20261112',
+      on: null,
+      off: null,
     });
+    expect(parseHash(href.train('T1', '20261112', '3652', '2850'))).toMatchObject({ name: 'train', tripId: 'T1', on: '3652', off: '2850' });
+    expect(parseHash(href.train('T1', '20261112', '3652'))).toMatchObject({ on: '3652', off: null });
     expect(parseHash('#/nope')).toEqual({ name: 'notFound' });
   });
 });

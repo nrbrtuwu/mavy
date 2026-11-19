@@ -48,7 +48,7 @@ export function BoardScreen({ stationId }: { stationId: string }) {
       ) : (
         <ScreenList>
           {data.departures.map((d) => (
-            <DepartureRow key={`${d.tripId}:${d.serviceDate}`} d={d} showLive={showLive} />
+            <DepartureRow key={`${d.tripId}:${d.serviceDate}`} d={d} stationId={data.station.id} showLive={showLive} />
           ))}
         </ScreenList>
       )}
@@ -56,7 +56,7 @@ export function BoardScreen({ stationId }: { stationId: string }) {
   )
 }
 
-function DepartureRow({ d, showLive }: { d: Departure; showLive: boolean }) {
+function DepartureRow({ d, stationId, showLive }: { d: Departure; stationId: string; showLive: boolean }) {
   // Stretched link: the headsign <a> covers the whole row (after:inset-0), the badge button
   // sits above it (z-10), so tapping the badge shows its popup and anywhere else opens the train.
   return (
@@ -65,7 +65,7 @@ function DepartureRow({ d, showLive }: { d: Departure; showLive: boolean }) {
       <TimeBlock time={d.departure} cancelled={d.cancelled} showLive={showLive} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <a
-          href={href.train(d.tripId, d.serviceDate)}
+          href={href.train(d.tripId, d.serviceDate, stationId)}
           className={cn(
             "font-medium outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring",
             d.cancelled && "text-muted-foreground line-through",

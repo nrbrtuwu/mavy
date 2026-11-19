@@ -6,7 +6,8 @@
 //   #/tabla/{stationId}         departure board
 //   #/utvonal                   route search form
 //   #/utvonal/{from}/{to}?ido=  route results
-//   #/vonat/{tripId}/{date}     train detail
+//   #/vonat/{tripId}/{date}?fel=&le=  train detail; fel / le: the station where the user
+//                               gets on / off (highlighted), both optional
 
 import { useSyncExternalStore } from "react"
 import type { StartPage } from "./settings"
@@ -19,7 +20,7 @@ export type Route =
   | { name: "board"; id: string }
   | { name: "routeForm" }
   | { name: "route"; from: string; to: string; time: string | null }
-  | { name: "train"; tripId: string; date: string }
+  | { name: "train"; tripId: string; date: string; on: string | null; off: string | null }
   | { name: "notFound" }
 
 const enc = encodeURIComponent
@@ -37,7 +38,10 @@ export function parseHash(hash: string): Route {
   if ((m = /^#\/utvonal\/([^/?]+)\/([^/?]+)(?:\?ido=(\d{2}:\d{2}))?$/.exec(h))) {
     return { name: "route", from: dec(m[1]!), to: dec(m[2]!), time: m[3] ?? null }
   }
-  if ((m = /^#\/vonat\/([^/?]+)\/(\d{8})$/.exec(h))) return { name: "train", tripId: dec(m[1]!), date: m[2]! }
+  if ((m = /^#\/vonat\/([^/?]+)\/(\d{8})(?:\?(.*))?$/.exec(h))) {
+    const q = new URLSearchParams(m[3] ?? "")
+    return { name: "train", tripId: dec(m[1]!), date: m[2]!, on: q.get("fel"), off: q.get("le") }
+  }
   return { name: "notFound" }
 }
 
@@ -58,7 +62,14 @@ export const href = {
   routeForm: () => "#/utvonal",
   route: (from: string, to: string, time?: string | null) =>
     `#/utvonal/${enc(from)}/${enc(to)}${time ? `?ido=${time}` : ""}`,
-  train: (tripId: string, date: string) => `#/vonat/${enc(tripId)}/${date}`,
+  /** on / off: where the user gets on / off this train (highlighted on the train screen). */
+  train: (tripId: string, date: string, on?: string | null, off?: string | null) => {
+    const q = new URLSearchParams()
+    if (on) q.set("fel", on)
+    if (off) q.set("le", off)
+    const qs = q.toString()
+    return `#/vonat/${enc(tripId)}/${date}${qs ? `?${qs}` : ""}`
+  },
 }
 
 /**

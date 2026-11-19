@@ -81,7 +81,7 @@ function FavoriteNext({ favorite }: { favorite: Favorite }) {
   if (!data) return null
   const next: NextTrain | null =
     favorite.type === "station" ? nextFromBoard(data as BoardResponse) : nextFromRoute(data as RouteResponse)
-  if (!next) return <span className="text-xs text-muted-foreground">Ma nincs több vonat</span>
+  if (!next) return <span className="text-xs text-muted-foreground">Nincs vonat 24 órán belül</span>
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground tabular-nums">
       <span className={next.cancelled ? "line-through" : "text-foreground"}>{timeParts(next.departure.planned).time}</span>

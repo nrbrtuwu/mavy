@@ -14,7 +14,18 @@ import { href } from "@/lib/router"
 import { currentLeg } from "@/lib/train-position"
 import type { TimeInfo, Trip } from "@/lib/types"
 
-export function TrainScreen({ tripId, date }: { tripId: string; date: string }) {
+export function TrainScreen({
+  tripId,
+  date,
+  on = null,
+  off = null,
+}: {
+  tripId: string
+  date: string
+  /** Station where the user gets on / off (from the route or board they came from). */
+  on?: string | null
+  off?: string | null
+}) {
   const load = useCallback(
     (signal: AbortSignal) => api<Trip>(`/api/train/${encodeURIComponent(tripId)}?date=${date}`, signal),
     [tripId, date],
@@ -23,15 +34,27 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
   const { error, dataTime, savedAt, refreshError } = live
   const t = live.data
 
-  // Where the train is now (live passed stops): a row between two stops, scrolled into view once.
+  // Where the train is now (live passed stops): a row between two stops.
   const leg = t && t.live.state !== "none" ? currentLeg(t.stops) : null
+  // The user's part of the trip: where they get on and off (else the whole run).
+  const onIdx = t && on ? t.stops.findIndex((s) => s.stationId === on) : -1
+  const offIdx = t && off ? t.stops.findIndex((s, i) => s.stationId === off && i > onIdx) : -1
   const nowRow = useRef<HTMLTableRowElement>(null)
+  const onRow = useRef<HTMLTableRowElement>(null)
   const scrolled = useRef(false)
+  // Scrolled into view once: where the user gets on, until the train has passed it; then
+  // (or without a boarding station) where the train is now.
   useEffect(() => {
-    if (leg === null || scrolled.current || !nowRow.current) return
+    const beforeBoarding = onIdx >= 0 && (leg === null || leg < onIdx)
+    const target = beforeBoarding ? onRow.current : (nowRow.current ?? onRow.current)
+    if (scrolled.current || !target) return
     scrolled.current = true
-    nowRow.current.scrollIntoView({ block: "center" })
-  }, [leg])
+    // Only the screen's own scroll area moves (scrollIntoView would also shift the page frame).
+    const body = target.closest<HTMLElement>("[data-screen-body]")
+    if (!body) return
+    const offset = target.getBoundingClientRect().top - body.getBoundingClientRect().top
+    body.scrollTop += offset - body.clientHeight / 2 + target.clientHeight / 2
+  }, [leg, onIdx])
 
   if (error) {
     return (
@@ -78,11 +101,19 @@ export function TrainScreen({ tripId, date }: { tripId: string; date: string }) 
           <TableBody>
             {t.stops.map((s, i) => (
               <Fragment key={s.sequence}>
-              <TableRow className={cn(s.passed && "text-muted-foreground")}>
+              <TableRow
+                ref={i === onIdx ? onRow : undefined}
+                className={cn(
+                  (s.passed || (onIdx >= 0 && i < onIdx) || (offIdx >= 0 && i > offIdx)) && "text-muted-foreground",
+                  (i === onIdx || i === offIdx) && "bg-muted/60 hover:bg-muted/60",
+                )}
+              >
                 <TableCell className="pl-4 whitespace-normal">
                   <a href={href.board(s.stationId)} className="font-medium underline-offset-4 hover:underline">
                     {s.name}
                   </a>
+                  {i === onIdx && <span className="block text-xs text-muted-foreground">Felszállás</span>}
+                  {i === offIdx && <span className="block text-xs text-muted-foreground">Leszállás</span>}
                   {s.cancelled && <span className="block text-xs font-semibold text-destructive">törölve</span>}
                 </TableCell>
                 <TimeCell time={s.arrival} cancelled={s.cancelled} showLive={showLive} />

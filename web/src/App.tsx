@@ -50,7 +50,7 @@ export function App() {
       screen = <RouteResultsScreen key={hash} from={route.from} to={route.to} time={route.time} />
       break
     case "train":
-      screen = <TrainScreen key={hash} tripId={route.tripId} date={route.date} />
+      screen = <TrainScreen key={hash} tripId={route.tripId} date={route.date} on={route.on} off={route.off} />
       break
     default:
       screen = (
