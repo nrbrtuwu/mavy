@@ -297,4 +297,21 @@ if (import.meta.main) {
     app.log.error(err);
     process.exit(1);
   });
+
+  // Clean stop: finish open requests, close the timetable. The deploy supervisor
+  // (deploy/supervisor.ts) asks with an IPC message; Ctrl+C and service managers with signals.
+  let stopping = false;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    app.close().then(
+      () => process.exit(0),
+      () => process.exit(1),
+    );
+  };
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+  process.on('message', (msg) => {
+    if ((msg as { type?: string } | null)?.type === 'shutdown') stop();
+  });
 }
