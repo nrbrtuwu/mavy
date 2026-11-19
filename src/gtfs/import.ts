@@ -7,9 +7,10 @@
 // so a failed import never breaks the existing database.
 
 import { Database } from 'bun:sqlite';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve, sep } from 'node:path';
+import { inflateRawSync } from 'node:zlib';
 
 export const GTFS_DIR = resolve(process.env.MAVY_GTFS_DIR ?? join(import.meta.dir, '../../data/gtfs'));
 export const DB_PATH = resolve(process.env.MAVY_DB ?? join(import.meta.dir, '../../data/mavy.db'));
@@ -444,10 +445,56 @@ export function extractZip(zipPath: string, destDir: string): void {
       errors.push(`${basename(cmd[0]!)}: not installed`);
     }
   }
+  // No tool (e.g. a minimal server image such as Pelican's): unzip in-process.
+  try {
+    extractZipInProcess(zipPath, destDir);
+    return;
+  } catch (err) {
+    errors.push(`built-in: ${(err as Error).message}`);
+  }
   throw new ImportError(
     `Could not extract ${basename(zipPath)}.\n  ${errors.join('\n  ')}\n` +
       'Install "unzip" (e.g. apt install unzip), or extract the zip into data/gtfs/ yourself and run the import again.',
   );
+}
+
+/**
+ * Minimal zip reader for GTFS feeds (stored or deflated entries, no zip64): the central
+ * directory lists the files, each is inflated with node:zlib. Paths leaving destDir are refused.
+ */
+export function extractZipInProcess(zipPath: string, destDir: string): void {
+  const buf = readFileSync(zipPath);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error('not a zip file');
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  const root = resolve(destDir);
+  for (let n = 0; n < count; n++) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('broken central directory');
+    const method = buf.readUInt16LE(p + 10);
+    const compressed = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const local = buf.readUInt32LE(p + 42);
+    const name = buf.toString('utf8', p + 46, p + 46 + nameLen);
+    p += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/')) continue;
+    const target = resolve(root, name);
+    if (!target.startsWith(root + sep)) throw new Error(`unsafe path in zip: ${name}`);
+    if (buf.readUInt32LE(local) !== 0x04034b50) throw new Error(`broken entry: ${name}`);
+    const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+    const data = buf.subarray(start, start + compressed);
+    if (method !== 0 && method !== 8) throw new Error(`unsupported compression in ${name}`);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, method === 8 ? inflateRawSync(data) : data);
+  }
 }
 
 function instructions(dir: string): string {
