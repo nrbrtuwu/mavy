@@ -32,6 +32,16 @@ createRoot(document.getElementById("root")!).render(
 
 // Service worker: offline app shell and last saved data. Needs HTTPS (or localhost).
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  // A new version took over (sw.js skipWaiting + clients.claim): this tab still runs the
+  // old code, so reload once. Not on the first install (no previous controller).
+  if (navigator.serviceWorker.controller) {
+    let reloading = false
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return
+      reloading = true
+      window.location.reload()
+    })
+  }
   navigator.serviceWorker.register("/sw.js").catch(() => {
     // not available (e.g. plain http): the app still works online
   })
