@@ -178,8 +178,7 @@ MAVY_PASSWORD='a long passphrase' bun run start
 
 ## Hosting on Pelican (automatic deploys)
 
-Adapted from the F1-Calendar project. `deploy/supervisor.ts` owns the public port and proxies
-to the live release. On every push to the branch it builds and tests the new commit in
+On every push to the branch it builds and tests the new commit in
 `releases/<commit>`, starts it next to the live one and switches traffic once it answers. If the
 build, tests or start fail, the previous release stays live.
 
