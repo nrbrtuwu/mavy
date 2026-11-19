@@ -1,7 +1,6 @@
-// Kedvencek next train and the train screen's "now between" row.
+// Kedvencek next train.
 import { describe, expect, test } from 'bun:test';
 import { nextFromBoard, nextFromRoute } from '../web/src/lib/next-train.ts';
-import { currentLeg } from '../web/src/lib/train-position.ts';
 
 const T = (hm: string) => `2026-11-19T${hm}:00+01:00`;
 const NOW = Date.parse(T('10:00'));
@@ -27,14 +26,3 @@ describe('next train of a favourite', () => {
   });
 });
 
-describe('where the train is now', () => {
-  const stops = (...p: (boolean | null)[]) => p.map((passed) => ({ passed }));
-  test('between the last passed stop and the next one', () => {
-    expect(currentLeg(stops(true, true, false, false))).toBe(1);
-  });
-  test('nothing before it starts, at the end, or without live data', () => {
-    expect(currentLeg(stops(false, false))).toBeNull();
-    expect(currentLeg(stops(true, true))).toBeNull();
-    expect(currentLeg(stops(null, null))).toBeNull();
-  });
-});

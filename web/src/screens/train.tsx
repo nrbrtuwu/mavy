@@ -1,5 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef } from "react"
-import { TrainFront } from "lucide-react"
+import { useCallback, useEffect, useRef } from "react"
 import { cn } from "cn"
 
 import { RouteArrow } from "@/components/route-arrow"
@@ -11,7 +10,6 @@ import { useLiveData } from "@/hooks/use-live-data"
 import { api } from "@/lib/api"
 import { serviceDateLabel, timeParts } from "@/lib/format"
 import { href } from "@/lib/router"
-import { currentLeg } from "@/lib/train-position"
 import type { TimeInfo, Trip } from "@/lib/types"
 
 export function TrainScreen({
@@ -34,19 +32,14 @@ export function TrainScreen({
   const { error, dataTime, savedAt, refreshError } = live
   const t = live.data
 
-  // Where the train is now (live passed stops): a row between two stops.
-  const leg = t && t.live.state !== "none" ? currentLeg(t.stops) : null
   // The user's part of the trip: where they get on and off (else the whole run).
   const onIdx = t && on ? t.stops.findIndex((s) => s.stationId === on) : -1
   const offIdx = t && off ? t.stops.findIndex((s, i) => s.stationId === off && i > onIdx) : -1
-  const nowRow = useRef<HTMLTableRowElement>(null)
   const onRow = useRef<HTMLTableRowElement>(null)
   const scrolled = useRef(false)
-  // Scrolled into view once: where the user gets on, until the train has passed it; then
-  // (or without a boarding station) where the train is now.
+  // Scrolled into view once: where the user gets on.
   useEffect(() => {
-    const beforeBoarding = onIdx >= 0 && (leg === null || leg < onIdx)
-    const target = beforeBoarding ? onRow.current : (nowRow.current ?? onRow.current)
+    const target = onRow.current
     if (scrolled.current || !target) return
     scrolled.current = true
     // Only the screen's own scroll area moves (scrollIntoView would also shift the page frame).
@@ -54,7 +47,7 @@ export function TrainScreen({
     if (!body) return
     const offset = target.getBoundingClientRect().top - body.getBoundingClientRect().top
     body.scrollTop += offset - body.clientHeight / 2 + target.clientHeight / 2
-  }, [leg, onIdx])
+  }, [onIdx])
 
   if (error) {
     return (
@@ -100,8 +93,8 @@ export function TrainScreen({
           </TableHeader>
           <TableBody>
             {t.stops.map((s, i) => (
-              <Fragment key={s.sequence}>
               <TableRow
+                key={s.sequence}
                 ref={i === onIdx ? onRow : undefined}
                 className={cn(
                   (s.passed || (onIdx >= 0 && i < onIdx) || (offIdx >= 0 && i > offIdx)) && "text-muted-foreground",
@@ -120,17 +113,6 @@ export function TrainScreen({
                 <TimeCell time={s.departure} cancelled={s.cancelled} showLive={showLive} />
                 <TableCell className="pr-4 text-right">{s.platform ?? ""}</TableCell>
               </TableRow>
-              {i === leg && (
-                <TableRow ref={nowRow} className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-2 pl-4 whitespace-normal">
-                    <span className="flex items-center gap-1.5 text-xs font-medium">
-                      <TrainFront className="size-3.5" aria-hidden />
-                      Most itt jár: {s.name} és {t.stops[i + 1]!.name} között
-                    </span>
-                  </TableCell>
-                </TableRow>
-              )}
-              </Fragment>
             ))}
           </TableBody>
         </Table>
