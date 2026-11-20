@@ -71,7 +71,12 @@ export async function prefetchLiveData(key: string, load: () => Promise<unknown>
   }
 }
 
-export function useLiveData<T>(key: string, load: (signal: AbortSignal) => Promise<T & Offline>): LiveData<T> {
+export function useLiveData<T>(
+  key: string,
+  load: (signal: AbortSignal) => Promise<T & Offline>,
+  /** Refresh interval while visible (default 60 s). */
+  refreshMs = REFRESH_MS,
+): LiveData<T> {
   const [state, setState] = useState<LiveData<T> & { key: string }>(() => fromKept<T>(key))
   const loadRef = useRef(load)
   loadRef.current = load
@@ -109,7 +114,7 @@ export function useLiveData<T>(key: string, load: (signal: AbortSignal) => Promi
     // Kept data shows at once; refetch unless it is only a few seconds old.
     loadedAt.current = kept.get(key)?.loadedAt ?? 0
     if (Date.now() - loadedAt.current >= FRESH_MS) run()
-    const due = () => document.visibilityState === "visible" && Date.now() - loadedAt.current >= REFRESH_MS
+    const due = () => document.visibilityState === "visible" && Date.now() - loadedAt.current >= refreshMs
     const timer = window.setInterval(() => due() && run(), 5_000)
     const onVisible = () => due() && run()
     document.addEventListener("visibilitychange", onVisible)
@@ -120,7 +125,7 @@ export function useLiveData<T>(key: string, load: (signal: AbortSignal) => Promi
       document.removeEventListener("visibilitychange", onVisible)
       window.removeEventListener("online", run)
     }
-  }, [key, refresh])
+  }, [key, refresh, refreshMs])
 
   // Data of a previous key is never shown for a new one (kept data for the new key is).
   if (state.key !== key) return fromKept<T>(key)

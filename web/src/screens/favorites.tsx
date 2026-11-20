@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronRight, MapPin, Route as RouteIcon, Search, Trash2 } from "lucide-react"
 
 import { Screen, ScreenList, ScreenSection } from "@/components/layout"
@@ -74,20 +74,53 @@ export function FavoritesScreen() {
   )
 }
 
+/** Favourites refresh more often than other screens: they show only the next train. */
+const FAVORITE_REFRESH_MS = 30_000
+/** How often the next train is picked again from the data (a departed one drops off). */
+const TICK_MS = 15_000
+
+/** Re-render every `ms` while mounted. */
+function useTick(ms: number): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), ms)
+    return () => window.clearInterval(id)
+  }, [ms])
+  return now
+}
+
 /** "16:11 → Győr +6 perc" (station) or "16:11 → 17:19 +6 perc" (route): the next train. */
 function FavoriteNext({ favorite }: { favorite: Favorite }) {
   const req = useMemo(() => favoriteRequest(favorite), [favorite])
-  const { data } = useLiveData<BoardResponse | RouteResponse>(req.key, req.load as () => Promise<BoardResponse | RouteResponse>)
-  if (!data) return null
+  const { data, error, savedAt, refreshError } = useLiveData<BoardResponse | RouteResponse>(
+    req.key,
+    req.load as () => Promise<BoardResponse | RouteResponse>,
+    FAVORITE_REFRESH_MS,
+  )
+  const now = useTick(TICK_MS)
+  if (!data) {
+    return (
+      <span className="text-xs text-muted-foreground">{error ? "Nem sikerült betölteni" : "Betöltés…"}</span>
+    )
+  }
+  // An offline copy or a failed refresh: the data may be old, its trains may have left.
+  const stale = savedAt !== null || refreshError !== null
   const next: NextTrain | null =
-    favorite.type === "station" ? nextFromBoard(data as BoardResponse) : nextFromRoute(data as RouteResponse)
-  if (!next) return <span className="text-xs text-muted-foreground">Nincs vonat 24 órán belül</span>
+    favorite.type === "station" ? nextFromBoard(data as BoardResponse, now) : nextFromRoute(data as RouteResponse, now)
+  if (!next) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        {stale ? "Nincs friss adat" : "Nincs vonat 24 órán belül"}
+      </span>
+    )
+  }
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground tabular-nums">
       <span className={next.cancelled ? "line-through" : "text-foreground"}>{timeParts(next.departure.planned).time}</span>
       <RouteArrow />
       <span className="truncate">{next.arrival ? timeParts(next.arrival.planned).time : next.headsign}</span>
       {next.live && <DelayText time={{ ...next.departure, delayMin: next.delayMin }} cancelled={next.cancelled} />}
+      {stale && <span>· nem friss</span>}
     </span>
   )
 }
