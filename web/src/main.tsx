@@ -18,6 +18,12 @@ void loadStationList()
 // Favourites (up to 5) load in the background, so opening one is instant.
 prefetchFavorites()
 
+// Portrait only. The manifest says so ("orientation": "portrait"), which Android applies to
+// the installed app. Chromium can also lock from script, but only in the installed app or
+// full screen; elsewhere (browser tabs, iOS, which has no lock at all) this just fails.
+const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }
+orientation?.lock?.("portrait").catch(() => {})
+
 // Light / dark mode follows the device setting (shadcn uses the .dark class).
 const dark = window.matchMedia("(prefers-color-scheme: dark)")
 const applyTheme = () => document.documentElement.classList.toggle("dark", dark.matches)
