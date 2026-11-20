@@ -32,8 +32,11 @@ export function AppShell({
 }) {
   const { animatedBackground, fullScreen } = useSettings()
 
-  // Edge swipe in the iPhone home-screen app: the previous page (any screen), or the parent.
-  useEdgeSwipeBack(() => navigateBack(backHref))
+  // Edge swipe in the iPhone home-screen app: the same as the Back button (router.ts,
+  // backAction), and only where there is one; on the navbar pages it does nothing.
+  useEdgeSwipeBack(() => {
+    if (backHref !== null) navigateBack()
+  })
 
   // Full screen: the page behind the box is the box's grey too (index.css, html.full-screen).
   useEffect(() => {
@@ -174,7 +177,7 @@ export function Screen({
               size="icon"
               // 44px tap target, like the navbar buttons.
               className="size-11 shrink-0"
-              onClick={() => navigateBack(backHref)}
+              onClick={() => navigateBack()}
               aria-label="Vissza"
               title="Vissza"
             >

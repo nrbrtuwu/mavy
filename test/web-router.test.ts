@@ -1,6 +1,6 @@
 // Frontend routing and the start page setting (pure parts, no DOM).
 import { describe, expect, test } from 'bun:test';
-import { href, parentHref, parseHash, resolveStart } from '../web/src/lib/router.ts';
+import { backAction, entryState, href, parentHref, parseHash, replacesEntry, resolveStart } from '../web/src/lib/router.ts';
 import { DEFAULT_SETTINGS, parseSettings } from '../web/src/lib/settings.ts';
 
 describe('parseHash', () => {
@@ -89,6 +89,65 @@ describe('parentHref (Back without an earlier app page)', () => {
     expect(parentHref(parseHash('#/nincs-ilyen'))).toBe('#/');
     for (const top of ['#/', '#/utvonal', '#/allomas', '#/kedvencek', '#/beallitasok']) {
       expect(parentHref(parseHash(top))).toBeNull();
+    }
+  });
+});
+
+describe('Back navigation (backAction, entryState, replacesEntry)', () => {
+  const r = parseHash;
+  // Simulates the app's history: push / replace with the states the router would store.
+  function walk(steps: Array<[hash: string, mode: 'push' | 'replace']>) {
+    const stack: { hash: string; state: ReturnType<typeof entryState> }[] = [];
+    for (const [hash, mode] of steps) {
+      const prev = stack[stack.length - 1]?.state ?? { mavyDepth: -1, mavyTop: -1 };
+      if (mode === 'push') stack.push({ hash, state: entryState(r(hash), prev.mavyDepth + 1, prev.mavyTop) });
+      else stack[stack.length - 1] = { hash, state: entryState(r(hash), prev.mavyDepth, prev.mavyTop) };
+    }
+    return stack[stack.length - 1]!;
+  }
+
+  test('list to list replaces, everything else pushes', () => {
+    expect(replacesEntry(r('#/utvonal/1/2'), r('#/utvonal/2/1'))).toBe(true);
+    expect(replacesEntry(r('#/tabla/1'), r('#/tabla/2'))).toBe(true);
+    expect(replacesEntry(r('#/utvonal'), r('#/utvonal/1/2'))).toBe(false);
+    expect(replacesEntry(r('#/utvonal/1/2'), r('#/vonat/t/20261120'))).toBe(false);
+    expect(replacesEntry(r('#/vonat/t/20261120'), r('#/tabla/1'))).toBe(false);
+  });
+
+  test('results go back to the search form, past Visszaút', () => {
+    const now = walk([['#/utvonal', 'push'], ['#/utvonal/1/2', 'push'], ['#/utvonal/2/1', 'replace']]);
+    expect(backAction(r(now.hash), now.state)).toEqual({ go: -1 });
+  });
+
+  test('a list goes back to favourites even after a train and another list', () => {
+    const now = walk([
+      ['#/kedvencek', 'push'],
+      ['#/utvonal/1/2', 'push'],
+      ['#/vonat/t/20261120', 'push'],
+      ['#/tabla/9', 'push'],
+    ]);
+    expect(backAction(r(now.hash), now.state)).toEqual({ go: -3 });
+  });
+
+  test('a train goes back one step, to the list it came from', () => {
+    const now = walk([['#/allomas', 'push'], ['#/tabla/9', 'push'], ['#/vonat/t/20261120', 'push']]);
+    expect(backAction(r(now.hash), now.state)).toEqual({ go: -1 });
+  });
+
+  test('without a search page in this tab: the parent screen', () => {
+    const list = walk([['#/utvonal/1/2', 'push']]);
+    expect(backAction(r(list.hash), list.state)).toEqual({ replace: '#/utvonal' });
+    const board = walk([['#/tabla/9', 'push']]);
+    expect(backAction(r(board.hash), board.state)).toEqual({ replace: '#/allomas' });
+    const train = walk([['#/vonat/t/20261120', 'push']]);
+    expect(backAction(r(train.hash), train.state)).toEqual({ replace: '#/' });
+    // Entries from the previous app version have no mavyTop.
+    expect(backAction(r('#/utvonal/1/2'), { mavyDepth: 3, mavyTop: -1 })).toEqual({ replace: '#/utvonal' });
+  });
+
+  test('navbar pages have no Back', () => {
+    for (const top of ['#/', '#/utvonal', '#/allomas', '#/kedvencek', '#/beallitasok']) {
+      expect(backAction(r(top), { mavyDepth: 4, mavyTop: 2 })).toBeNull();
     }
   });
 });

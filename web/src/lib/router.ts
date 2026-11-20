@@ -90,23 +90,91 @@ export function parentHref(route: Route): string | null {
   }
 }
 
-// In-app history depth, kept in history.state so it survives back/forward and reloads:
-// 0 = the first page opened in this tab, +1 for every page opened from there.
-function historyDepth(): number {
-  const s = window.history.state as { mavyDepth?: unknown } | null
-  return typeof s?.mavyDepth === "number" ? s.mavyDepth : -1
+// ---- Back navigation ---------------------------------------------------------------
+//
+// Screens come in three levels: 0 = the navbar pages (search forms, favourites, settings),
+// 1 = lists (route results, departure board), 2 = a train. Back goes up a level:
+//   - from a train: to the screen it was opened from (usually its list);
+//   - from a list: to the search page or favourites the user started from, skipping the
+//     other lists seen since (Visszaút, an earlier search …);
+//   - without such a page in this tab's history: to the parent screen (parentHref).
+// Moving from one list to another (Visszaút) replaces the history entry instead of adding
+// one, so the browser's / phone's own Back follows the same path.
+//
+// Every history entry the app makes carries its depth (0 = first page opened in this tab,
+// +1 per page opened from there) and the depth of the level-0 page it belongs to (-1: none).
+
+export type Level = 0 | 1 | 2
+
+export function routeLevel(route: Route): Level {
+  switch (route.name) {
+    case "board":
+    case "route":
+      return 1
+    case "train":
+    case "notFound":
+      return 2
+    default:
+      return 0
+  }
 }
 
-let lastDepth = 0
+/** An in-app link from `from` to `to` replaces the current entry: list to list. */
+export function replacesEntry(from: Route, to: Route): boolean {
+  return routeLevel(from) === 1 && routeLevel(to) === 1
+}
 
-/** Call once at start-up: numbers the history entries the app creates (see canGoBack). */
+export interface NavState {
+  mavyDepth: number
+  /** Depth of the level-0 page this entry was reached from, -1 if none. */
+  mavyTop: number
+}
+
+/** The history state for `route` at `depth`; `prevTop` is the previous entry's mavyTop. */
+export function entryState(route: Route, depth: number, prevTop: number): NavState {
+  return { mavyDepth: depth, mavyTop: routeLevel(route) === 0 ? depth : prevTop }
+}
+
+export type BackAction = { go: number } | { replace: string } | null
+
+/** What Back does on `route` with the current entry's state (null: nothing, a navbar page). */
+export function backAction(route: Route, state: NavState | null): BackAction {
+  const level = routeLevel(route)
+  if (level === 0) return null
+  const depth = state?.mavyDepth ?? 0
+  if (level === 1) {
+    const top = state?.mavyTop ?? -1
+    if (top >= 0 && top < depth) return { go: top - depth }
+  } else if (depth > 0) {
+    return { go: -1 }
+  }
+  const parent = parentHref(route)
+  return parent ? { replace: parent } : null
+}
+
+function currentState(): NavState | null {
+  const s = window.history.state as Partial<NavState> | null
+  if (typeof s?.mavyDepth !== "number") return null
+  return { mavyDepth: s.mavyDepth, mavyTop: typeof s.mavyTop === "number" ? s.mavyTop : -1 }
+}
+
+/** State of the entry shown now (updated on every hashchange). */
+let last: NavState = { mavyDepth: 0, mavyTop: -1 }
+
+/** Call once at start-up: gives every history entry the app creates its NavState. */
 export function trackHistoryDepth() {
-  if (historyDepth() < 0) window.history.replaceState({ mavyDepth: 0 }, "")
-  lastDepth = historyDepth()
+  if (!currentState()) {
+    window.history.replaceState(entryState(parseHash(window.location.hash), 0, -1), "")
+  }
+  last = currentState()!
   window.addEventListener("hashchange", () => {
-    // A link click makes a new entry without state; back/forward restore the stored depth.
-    if (historyDepth() < 0) window.history.replaceState({ mavyDepth: lastDepth + 1 }, "")
-    lastDepth = historyDepth()
+    // A plain hash change (route form submit) makes a new entry without state;
+    // back/forward restore the stored one.
+    if (!currentState()) {
+      const route = parseHash(window.location.hash)
+      window.history.replaceState(entryState(route, last.mavyDepth + 1, last.mavyTop), "")
+    }
+    last = currentState()!
   })
 }
 
@@ -124,24 +192,29 @@ export function interceptAppLinks() {
     if (!a || !target?.startsWith("#/") || (a.target && a.target !== "_self") || a.hasAttribute("download")) return
     e.preventDefault()
     if (target === window.location.hash) return
-    window.history.pushState({ mavyDepth: lastDepth + 1 }, "", target)
+    const from = parseHash(window.location.hash)
+    const to = parseHash(target)
+    if (replacesEntry(from, to)) {
+      window.history.replaceState(entryState(to, last.mavyDepth, last.mavyTop), "", target)
+    } else {
+      window.history.pushState(entryState(to, last.mavyDepth + 1, last.mavyTop), "", target)
+    }
     window.dispatchEvent(new HashChangeEvent("hashchange"))
   })
 }
 
-/** True when the previous history entry is a page of this app. */
-export function canGoBack(): boolean {
-  return historyDepth() > 0
-}
-
-/** Back: the previous page of the app, or else `fallback` (replacing the current entry). */
-export function navigateBack(fallback: string | null) {
-  if (canGoBack()) {
-    window.history.back()
-  } else if (fallback) {
-    window.history.replaceState({ mavyDepth: Math.max(historyDepth(), 0) }, "", fallback)
-    window.dispatchEvent(new HashChangeEvent("hashchange"))
+/** Back button and swipe: see backAction. */
+export function navigateBack() {
+  const state = currentState()
+  const action = backAction(parseHash(window.location.hash), state)
+  if (!action) return
+  if ("go" in action) {
+    window.history.go(action.go)
+    return
   }
+  const s = state ?? last
+  window.history.replaceState(entryState(parseHash(action.replace), s.mavyDepth, s.mavyTop), "", action.replace)
+  window.dispatchEvent(new HashChangeEvent("hashchange"))
 }
 
 function subscribe(onChange: () => void) {
